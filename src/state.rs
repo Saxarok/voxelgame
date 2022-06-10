@@ -1,21 +1,27 @@
 use anyhow::{Result, Context};
-use cgmath::{vec3, vec2};
+use cgmath::{vec3, vec2, Rad, Deg};
 use wgpu::{include_wgsl, util::DeviceExt};
 use winit::{window::Window, event::{KeyboardInput, WindowEvent, MouseButton, ElementState}};
 
-use crate::graphics::{mesh::{Vertex, Mesh}, texture::Texture};
+use crate::graphics::{mesh::{Vertex, Mesh}, texture::Texture, camera::{Camera, CameraUniform}, controller::CameraController};
 
 pub struct State {
-    pub surface    : wgpu::Surface,
-    pub device     : wgpu::Device,
-    pub queue      : wgpu::Queue,
-    pub config     : wgpu::SurfaceConfiguration,
-    pub size       : winit::dpi::PhysicalSize<u32>,
+    pub surface           : wgpu::Surface,
+    pub device            : wgpu::Device,
+    pub queue             : wgpu::Queue,
+    pub config            : wgpu::SurfaceConfiguration,
+    pub size              : winit::dpi::PhysicalSize<u32>,
 
-    pub mesh       : Mesh,
-    pub texture    : Texture,
-    pub bind_group : wgpu::BindGroup,
-    pub pipeline   : wgpu::RenderPipeline,
+    pub mesh              : Mesh,
+    pub texture           : Texture,
+    pub bind_group        : wgpu::BindGroup,
+    pub pipeline          : wgpu::RenderPipeline,
+
+    pub camera            : Camera,
+    pub camera_controller : CameraController,
+    pub camera_uniform    : CameraUniform,
+    pub camera_buffer     : wgpu::Buffer,
+    pub camera_bind_group : wgpu::BindGroup,
 }
 
 impl State {
@@ -103,12 +109,65 @@ impl State {
             }
         );
 
+        let camera_controller = CameraController::new(4.0, 0.4);
+
+        let camera = Camera {
+            position : (0.0, 1.0, 2.0).into(),
+            yaw      : Deg(-90.0).into(), 
+            pitch    : Deg(-20.0).into(),
+            aspect   : config.width as f32 / config.height as f32,
+            fovy     : 90.0,
+            znear    : 0.1,
+            zfar     : 100.0,
+        };
+
+        let mut camera_uniform = CameraUniform::new();
+        camera_uniform.update_view_proj(&camera);
+
+        let camera_buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Camera Buffer"),
+                contents: bytemuck::cast_slice(&[camera_uniform]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            }
+        );
+
+        let camera_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }
+            ],
+            label: Some("camera_bind_group_layout"),
+        });
+
+        let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &camera_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: camera_buffer.as_entire_binding(),
+                }
+            ],
+            label: Some("camera_bind_group"),
+        });
+
         // Shaders
         let shader = device.create_shader_module(&include_wgsl!("../res/core.wgsl"));
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
-            bind_group_layouts   : &[&texture_bind_group_layout],
             push_constant_ranges : &[],
+            bind_group_layouts   : &[
+                &texture_bind_group_layout,
+                &camera_bind_group_layout,
+            ],
         });
 
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -177,6 +236,13 @@ impl State {
             texture,
             bind_group,
 
+            // Camera
+            camera,
+            camera_controller,
+            camera_uniform,
+            camera_buffer,
+            camera_bind_group,
+
             // Pipeline
             pipeline,
         });
@@ -191,9 +257,26 @@ impl State {
         }
     }
 
-    pub fn mouse(&mut self, delta: (f64, f64)) {}
-    pub fn input(&mut self, event: &WindowEvent) { }
-    pub fn update(&mut self, dt: instant::Duration) { }
+    pub fn mouse(&mut self, delta: (f64, f64)) {
+        self.camera_controller.process_mouse(delta.0, delta.1);
+    }
+    
+    pub fn input(&mut self, event: &WindowEvent) {
+        match event {
+            WindowEvent::KeyboardInput { input: KeyboardInput { virtual_keycode: Some(key), state, .. }, .. }
+                => { self.camera_controller.process_keyboard(*key, *state); }
+            WindowEvent::MouseWheel { delta, .. }
+                => { self.camera_controller.process_scroll(delta); }
+
+            _ => {},
+        }
+    }
+
+    pub fn update(&mut self, dt: instant::Duration) {
+        self.camera_controller.update_camera(&mut self.camera, dt);
+        self.camera_uniform.update_view_proj(&self.camera);
+        self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform]));
+    }
     pub fn render(&mut self) {
         let output = self.surface.get_current_texture().unwrap();
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -227,6 +310,7 @@ impl State {
         
             render_pass.set_pipeline(&self.pipeline);
             render_pass.set_bind_group(0, &self.bind_group, &[]);
+            render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
             self.mesh.draw(&mut render_pass);
         }
     
