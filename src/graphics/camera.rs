@@ -1,4 +1,3 @@
-use std::f32::consts::FRAC_PI_2;
 
 use cgmath::{Matrix4, Vector3, Point3, perspective, Deg, Rad, InnerSpace};
 
@@ -10,34 +9,30 @@ pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
     0.0, 0.0, 0.5, 1.0,
 );
 
-const SAFE_FRAC_PI_2: f32 = FRAC_PI_2 - 0.0001;
-
 pub struct Camera {
     pub position : Point3<f32>,
     pub yaw      : Rad<f32>,
     pub pitch    : Rad<f32>,
-
-    pub aspect : f32,
-    pub fovy   : f32,
-    pub znear  : f32,
-    pub zfar   : f32,
 }
 
 impl Camera {
-    pub fn build_view_projection_matrix(&self) -> Matrix4<f32> {
-        let view = Matrix4::look_to_rh(
+    pub fn new<V: Into<Point3<f32>>, Y: Into<Rad<f32>>, P: Into<Rad<f32>>>(position: V, yaw: Y, pitch: P) -> Self {
+        return Self {
+            position: position.into(),
+            yaw: yaw.into(),
+            pitch: pitch.into(),
+        };
+    }
+
+    pub fn calc_matrix(&self) -> Matrix4<f32> {
+        let (sin_pitch, cos_pitch) = self.pitch.0.sin_cos();
+        let (sin_yaw, cos_yaw) = self.yaw.0.sin_cos();
+
+        return Matrix4::look_to_rh(
             self.position,
-            Vector3::new(
-                self.yaw.0.cos(),
-                self.pitch.0.sin(),
-                self.yaw.0.sin(),
-            ).normalize(),
+            Vector3::new(cos_pitch * cos_yaw, sin_pitch, cos_pitch * sin_yaw).normalize(),
             Vector3::unit_y(),
         );
-        
-        let proj = perspective(Deg(self.fovy), self.aspect, self.znear, self.zfar);
-
-        return OPENGL_TO_WGPU_MATRIX * proj * view;
     }
 }
 
@@ -53,12 +48,39 @@ unsafe impl bytemuck::Pod for CameraUniform { }
 impl CameraUniform {
     pub fn new() -> Self {
         use cgmath::SquareMatrix;
+
         Self {
             view_proj: Matrix4::identity().into(),
         }
     }
 
-    pub fn update_view_proj(&mut self, camera: &Camera) {
-        self.view_proj = camera.build_view_projection_matrix().into();
+    pub fn update_view_proj(&mut self, camera: &Camera, projection: &Projection) {
+        self.view_proj = (OPENGL_TO_WGPU_MATRIX * projection.calc_matrix() * camera.calc_matrix()).into();
+    }
+}
+
+pub struct Projection {
+    aspect: f32,
+    fovy: Rad<f32>,
+    znear: f32,
+    zfar: f32,
+}
+
+impl Projection {
+    pub fn new<F: Into<Rad<f32>>>(width: u32, height: u32, fovy: F, znear: f32, zfar: f32) -> Self {
+        return Self {
+            aspect: width as f32 / height as f32,
+            fovy: fovy.into(),
+            znear,
+            zfar,
+        };
+    }
+
+    pub fn resize(&mut self, width: u32, height: u32) {
+        self.aspect = width as f32 / height as f32;
+    }
+
+    pub fn calc_matrix(&self) -> Matrix4<f32> {
+        return perspective(self.fovy, self.aspect, self.znear, self.zfar);
     }
 }

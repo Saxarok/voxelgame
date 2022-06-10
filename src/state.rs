@@ -3,7 +3,7 @@ use cgmath::{vec3, vec2, Rad, Deg};
 use wgpu::{include_wgsl, util::DeviceExt};
 use winit::{window::Window, event::{KeyboardInput, WindowEvent, MouseButton, ElementState}};
 
-use crate::graphics::{mesh::{Vertex, Mesh}, texture::Texture, camera::{Camera, CameraUniform}, controller::CameraController};
+use crate::graphics::{mesh::{Vertex, Mesh}, texture::Texture, camera::{Camera, CameraUniform, Projection}, controller::CameraController};
 
 pub struct State {
     pub surface           : wgpu::Surface,
@@ -17,6 +17,7 @@ pub struct State {
     pub bind_group        : wgpu::BindGroup,
     pub pipeline          : wgpu::RenderPipeline,
 
+    pub projection        : Projection,
     pub camera            : Camera,
     pub camera_controller : CameraController,
     pub camera_uniform    : CameraUniform,
@@ -109,20 +110,14 @@ impl State {
             }
         );
 
-        let camera_controller = CameraController::new(4.0, 0.4);
+        let camera_controller = CameraController::new(4.0, 1.0);
 
-        let camera = Camera {
-            position : (0.0, 1.0, 2.0).into(),
-            yaw      : Deg(-90.0).into(), 
-            pitch    : Deg(-20.0).into(),
-            aspect   : config.width as f32 / config.height as f32,
-            fovy     : 90.0,
-            znear    : 0.1,
-            zfar     : 100.0,
-        };
+        let projection = Projection::new(config.width, config.height, Deg(90.0), 0.1, 100.0);
+
+        let camera = Camera::new((0.0, 1.0, 2.0), Deg(-90.0), Deg(-20.0));
 
         let mut camera_uniform = CameraUniform::new();
-        camera_uniform.update_view_proj(&camera);
+        camera_uniform.update_view_proj(&camera, &projection);
 
         let camera_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
@@ -213,13 +208,13 @@ impl State {
 
         // Mesh
         let vertices = vec![
-            Vertex { pos: vec3( 0.5,  0.5, 0.0), uv: vec2(1.0, 1.0) },
-            Vertex { pos: vec3(-0.5,  0.5, 0.0), uv: vec2(0.0, 1.0) },
-            Vertex { pos: vec3(-0.5, -0.5, 0.0), uv: vec2(0.0, 0.0) },
+            Vertex { pos: vec3(1.0, 1.0, 0.0), uv: vec2(1.0, 1.0) },
+            Vertex { pos: vec3(0.0, 1.0, 0.0), uv: vec2(0.0, 1.0) },
+            Vertex { pos: vec3(0.0, 0.0, 0.0), uv: vec2(0.0, 0.0) },
 
-            Vertex { pos: vec3(-0.5, -0.5, 0.0), uv: vec2(0.0, 0.0) },
-            Vertex { pos: vec3( 0.5, -0.5, 0.0), uv: vec2(1.0, 0.0) },
-            Vertex { pos: vec3( 0.5,  0.5, 0.0), uv: vec2(1.0, 1.0) },
+            Vertex { pos: vec3(0.0, 0.0, 0.0), uv: vec2(0.0, 0.0) },
+            Vertex { pos: vec3(1.0, 0.0, 0.0), uv: vec2(1.0, 0.0) },
+            Vertex { pos: vec3(1.0, 1.0, 0.0), uv: vec2(1.0, 1.0) },
         ];
 
         let mesh = Mesh::new(&device, vertices);
@@ -237,6 +232,7 @@ impl State {
             bind_group,
 
             // Camera
+            projection,
             camera,
             camera_controller,
             camera_uniform,
@@ -250,6 +246,7 @@ impl State {
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         if new_size.width > 0 && new_size.height > 0 {
+            self.projection.resize(new_size.width, new_size.height);
             self.size = new_size;
             self.config.width = new_size.width;
             self.config.height = new_size.height;
@@ -266,7 +263,7 @@ impl State {
             WindowEvent::KeyboardInput { input: KeyboardInput { virtual_keycode: Some(key), state, .. }, .. }
                 => { self.camera_controller.process_keyboard(*key, *state); }
             WindowEvent::MouseWheel { delta, .. }
-                => { self.camera_controller.process_scroll(delta); }
+                => { }
 
             _ => {},
         }
@@ -274,7 +271,7 @@ impl State {
 
     pub fn update(&mut self, dt: instant::Duration) {
         self.camera_controller.update_camera(&mut self.camera, dt);
-        self.camera_uniform.update_view_proj(&self.camera);
+        self.camera_uniform.update_view_proj(&self.camera, &self.projection);
         self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform]));
     }
     pub fn render(&mut self) {
