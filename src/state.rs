@@ -3,7 +3,7 @@ use cgmath::{vec3, vec2, Deg};
 use wgpu::{include_wgsl, util::DeviceExt};
 use winit::{window::Window, event::{KeyboardInput, WindowEvent}};
 
-use crate::graphics::{mesh::{Vertex, Mesh}, texture::Texture, camera::{Camera, CameraUniform, Projection}, controller::CameraController, utils::Utils};
+use crate::graphics::{mesh::{Vertex, Mesh}, texture::Texture, camera::{Camera, CameraUniform, Projection}, controller::CameraController, utils};
 
 pub struct State {
     pub surface           : wgpu::Surface,
@@ -277,8 +277,8 @@ impl State {
         let output = self.surface.get_current_texture().unwrap();
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        Utils::submit(&self.queue, &self.device, |encoder| {
-            Utils::render(encoder, &view, |mut render_pass| {
+        utils::submit(&self.queue, &self.device, |encoder| {
+            utils::render(encoder, &view, |mut render_pass| {
                 render_pass.set_pipeline(&self.pipeline);
                 render_pass.set_bind_group(0, &self.bind_group, &[]);
                 render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
