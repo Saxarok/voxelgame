@@ -1,22 +1,25 @@
+use anyhow::{Result, Context};
 use cgmath::{vec3, vec2};
-use wgpu::include_wgsl;
+use wgpu::{include_wgsl};
 use winit::{window::Window, event::KeyboardInput};
 
-use crate::graphics::mesh::{Vertex, Mesh};
+use crate::graphics::{mesh::{Vertex, Mesh}, texture::Texture};
 
 pub struct State {
-    pub surface  : wgpu::Surface,
-    pub device   : wgpu::Device,
-    pub queue    : wgpu::Queue,
-    pub config   : wgpu::SurfaceConfiguration,
-    pub size     : winit::dpi::PhysicalSize<u32>,
+    pub surface    : wgpu::Surface,
+    pub device     : wgpu::Device,
+    pub queue      : wgpu::Queue,
+    pub config     : wgpu::SurfaceConfiguration,
+    pub size       : winit::dpi::PhysicalSize<u32>,
 
-    pub pipeline : wgpu::RenderPipeline,
-    pub mesh     : Mesh,
+    pub mesh       : Mesh,
+    pub texture    : Texture,
+    pub bind_group : wgpu::BindGroup,
+    pub pipeline   : wgpu::RenderPipeline,
 }
 
 impl State {
-    pub async fn new(window: &Window) -> Self {
+    pub async fn new(window: &Window) -> Result<Self> {
         let size = window.inner_size();
 
         // Backends::all => Vulkan + Metal + DX12 + Browser WebGPU
@@ -28,7 +31,7 @@ impl State {
                 compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
             },
-        ).await.unwrap();
+        ).await.context("Failed to retrive an adapter")?;
 
         let (device, queue) = adapter.request_device(
             &wgpu::DeviceDescriptor {
@@ -43,7 +46,7 @@ impl State {
                 label: None,
             },
             None, // Trace path
-        ).await.unwrap();
+        ).await?;
 
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -55,73 +58,124 @@ impl State {
 
         surface.configure(&device, &config);
 
+        // Textures
+        let data = include_bytes!("../res/test.png");
+        let texture = Texture::from_bytes(&device, &queue, data, wgpu::FilterMode::Nearest, "test.png")?;
+
+        let texture_bind_group_layout =
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding    : 0,
+                    visibility : wgpu::ShaderStages::FRAGMENT,
+                    ty         : wgpu::BindingType::Texture {
+                        multisampled   : false,
+                        view_dimension : wgpu::TextureViewDimension::D2,
+                        sample_type    : wgpu::TextureSampleType::Float { filterable: true },
+                    },
+                    count      : None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding    : 1,
+                    visibility : wgpu::ShaderStages::FRAGMENT,
+                    // This should match the filterable field of the corresponding Texture entry above.
+                    ty         : wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count      : None,
+                },
+            ],
+            label: Some("texture_bind_group_layout"),
+        });
+
+        let bind_group = device.create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                layout: &texture_bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding  : 0,
+                        resource : wgpu::BindingResource::TextureView(&texture.view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding  : 1,
+                        resource : wgpu::BindingResource::Sampler(&texture.sampler),
+                    }
+                ],
+                label: Some("diffuse_bind_group"),
+            }
+        );
+
+        // Shaders
         let shader = device.create_shader_module(&include_wgsl!("../res/core.wgsl"));
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[],
-            push_constant_ranges: &[],
+            bind_group_layouts   : &[&texture_bind_group_layout],
+            push_constant_ranges : &[],
         });
-
-        use wgpu::*;
 
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label  : Some("Render Pipeline"),
             layout : Some(&pipeline_layout),
 
             // Shaders
-            vertex: VertexState {
+            vertex: wgpu::VertexState {
                 module      : &shader,
                 entry_point : "vertex_main",
                 buffers     : &[
                     Vertex::describe(),
                 ],
             },
-            fragment: Some(FragmentState {
+            fragment: Some(wgpu::FragmentState {
                 module      : &shader,
                 entry_point : "fragment_main",
-                targets     : &[ColorTargetState {
+                targets     : &[wgpu::ColorTargetState {
                     format     : config.format,
-                    blend      : Some(BlendState::REPLACE),
-                    write_mask : ColorWrites::ALL,
+                    blend      : Some(wgpu::BlendState::REPLACE),
+                    write_mask : wgpu::ColorWrites::ALL,
                 }],
             }),
 
             // Other
-            primitive: PrimitiveState {
-                topology           : PrimitiveTopology::TriangleList,
+            primitive: wgpu::PrimitiveState {
+                topology           : wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format : None,
-                front_face         : FrontFace::Ccw,
-                cull_mode          : Some(Face::Back),
-                polygon_mode       : PolygonMode::Fill, // Other modes require Features::NON_FILL_POLYGON_MODE
-                unclipped_depth    : false,             // Requires Features::DEPTH_CLIP_CONTROL
-                conservative       : false,             // Requires Features::CONSERVATIVE_RASTERIZATION
+                front_face         : wgpu::FrontFace::Ccw,
+                cull_mode          : Some(wgpu::Face::Back),
+                polygon_mode       : wgpu::PolygonMode::Fill, // Other modes require Features::NON_FILL_POLYGON_MODE
+                unclipped_depth    : false,                   // Requires Features::DEPTH_CLIP_CONTROL
+                conservative       : false,                   // Requires Features::CONSERVATIVE_RASTERIZATION
             },
             depth_stencil : None,
             multiview     : None,
-            multisample   : MultisampleState {
+            multisample   : wgpu::MultisampleState {
                 count                     : 1,
                 mask                      : !0,
                 alpha_to_coverage_enabled : false,
             },
         });
 
+        // Mesh
         let vertices = vec![
-            Vertex { pos: vec3( 0.0,  0.5, 0.0), uv: vec2(1.0, 0.0) },
-            Vertex { pos: vec3(-0.5, -0.5, 0.0), uv: vec2(0.0, 1.0) },
-            Vertex { pos: vec3( 0.5, -0.5, 0.0), uv: vec2(0.0, 0.0) },
+            Vertex { pos: vec3( 0.5,  0.5, 0.0), uv: vec2(1.0, 1.0) },
+            Vertex { pos: vec3(-0.5,  0.5, 0.0), uv: vec2(0.0, 1.0) },
+            Vertex { pos: vec3(-0.5, -0.5, 0.0), uv: vec2(0.0, 0.0) },
+
+            Vertex { pos: vec3(-0.5, -0.5, 0.0), uv: vec2(0.0, 0.0) },
+            Vertex { pos: vec3( 0.5, -0.5, 0.0), uv: vec2(1.0, 0.0) },
+            Vertex { pos: vec3( 0.5,  0.5, 0.0), uv: vec2(1.0, 1.0) },
         ];
 
         let mesh = Mesh::new(&device, vertices);
 
-        return Self {
+        return Ok(Self {
             surface,
             device,
             queue,
             config,
             size,
+            mesh,
+            texture,
+            bind_group,
             pipeline,
-            mesh
-        };
+        });
     }
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
@@ -171,6 +225,7 @@ impl State {
             });
         
             render_pass.set_pipeline(&self.pipeline);
+            render_pass.set_bind_group(0, &self.bind_group, &[]); 
             self.mesh.draw(&mut render_pass);
         }
     

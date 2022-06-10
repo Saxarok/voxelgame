@@ -22,7 +22,7 @@ pub async fn run() {
     let event_loop = EventLoop::new();
     let window = create_window(&event_loop);
 
-    let mut state = State::new(&window).await;
+    let mut state = State::new(&window).await.unwrap();
 
     event_loop.run(move |event, _, control_flow|
         match event {
