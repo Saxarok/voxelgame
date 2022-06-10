@@ -11,7 +11,13 @@
         import init from "./pkg/voxelgame.js";
         init().then(() => {
             console.log("WASM Loaded");
+
+            const canvas = document.getElementsByTagName('canvas')[0];
+            canvas.onclick = () => {
+                canvas.requestPointerLock()
+            };
         });
+
     </script>
     <style>
         body {

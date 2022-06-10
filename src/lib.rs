@@ -87,6 +87,7 @@ fn create_window(event_loop: &EventLoop<()>) -> Window {
             .and_then(|doc| {
                 let dst = doc.get_element_by_id("body")?;
                 let canvas = web_sys::Element::from(window.canvas());
+
                 dst.append_child(&canvas).ok()?;
                 Some(())
             }).expect("Couldn't append canvas to document body.");

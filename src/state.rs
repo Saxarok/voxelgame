@@ -262,10 +262,8 @@ impl State {
         match event {
             WindowEvent::KeyboardInput { input: KeyboardInput { virtual_keycode: Some(key), state, .. }, .. }
                 => { self.camera_controller.process_keyboard(*key, *state); }
-            WindowEvent::MouseWheel { delta, .. }
-                => { }
 
-            _ => {},
+            _ => {}
         }
     }
 
