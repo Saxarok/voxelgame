@@ -1,8 +1,8 @@
 
-use cgmath::{Matrix4, Vector3, Point3, perspective, Deg, Rad, InnerSpace};
+use cgmath::{Matrix4, Vector3, Point3, perspective, Rad, InnerSpace};
 
 #[rustfmt::skip]
-pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
+const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
     1.0, 0.0, 0.0, 0.0,
     0.0, 1.0, 0.0, 0.0,
     0.0, 0.0, 0.5, 0.0,
@@ -36,6 +36,8 @@ impl Camera {
     }
 }
 
+
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct CameraUniform {
@@ -58,6 +60,8 @@ impl CameraUniform {
         self.view_proj = (OPENGL_TO_WGPU_MATRIX * projection.calc_matrix() * camera.calc_matrix()).into();
     }
 }
+
+
 
 pub struct Projection {
     aspect: f32,

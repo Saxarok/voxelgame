@@ -1,6 +1,6 @@
 use image::{GenericImageView, DynamicImage};
 use wgpu::{Device, Queue, FilterMode};
-use anyhow::*;
+use anyhow::Result;
 
 pub struct Texture {
     pub sampler : wgpu::Sampler,

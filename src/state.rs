@@ -1,9 +1,9 @@
 use anyhow::{Result, Context};
-use cgmath::{vec3, vec2, Rad, Deg};
+use cgmath::{vec3, vec2, Deg};
 use wgpu::{include_wgsl, util::DeviceExt};
-use winit::{window::Window, event::{KeyboardInput, WindowEvent, MouseButton, ElementState}};
+use winit::{window::Window, event::{KeyboardInput, WindowEvent}};
 
-use crate::graphics::{mesh::{Vertex, Mesh}, texture::Texture, camera::{Camera, CameraUniform, Projection}, controller::CameraController};
+use crate::graphics::{mesh::{Vertex, Mesh}, texture::Texture, camera::{Camera, CameraUniform, Projection}, controller::CameraController, utils::Utils};
 
 pub struct State {
     pub surface           : wgpu::Surface,
@@ -274,44 +274,20 @@ impl State {
         self.camera_uniform.update_view_proj(&self.camera, &self.projection);
         self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform]));
     }
+
     pub fn render(&mut self) {
         let output = self.surface.get_current_texture().unwrap();
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Render Encoder"),
-        });
 
-        {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Render Pass"),
-                color_attachments: &[
-                    // [[location(0)]] in the fragment shader
-                    wgpu::RenderPassColorAttachment {
-                        resolve_target: None,
-                        view: &view,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(
-                                wgpu::Color {
-                                    r: 0.01,
-                                    g: 0.01,
-                                    b: 0.01,
-                                    a: 1.0,
-                                }
-                            ),
-                            store: true,
-                        }
-                    }
-                ],
-                depth_stencil_attachment: None,
+        Utils::submit(&self.queue, &self.device, |encoder| {
+            Utils::render(encoder, &view, |mut render_pass| {
+                render_pass.set_pipeline(&self.pipeline);
+                render_pass.set_bind_group(0, &self.bind_group, &[]);
+                render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+                self.mesh.draw(&mut render_pass);
             });
-        
-            render_pass.set_pipeline(&self.pipeline);
-            render_pass.set_bind_group(0, &self.bind_group, &[]);
-            render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
-            self.mesh.draw(&mut render_pass);
-        }
+        });
     
-        self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
     }
 }

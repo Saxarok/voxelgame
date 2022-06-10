@@ -1,6 +1,6 @@
 use cgmath::{Vector3, InnerSpace, Rad};
 use instant::Duration;
-use winit::{event::{VirtualKeyCode, ElementState, MouseScrollDelta}, dpi::PhysicalPosition};
+use winit::event::{VirtualKeyCode, ElementState};
 
 use super::camera::Camera;
 use std::f32::consts::FRAC_PI_2;
