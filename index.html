@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>voxelgame</title>
+    </head>
+    <body id="body">
+    <script type="module">
+        import init from "./pkg/voxelgame.js";
+        init().then(() => {
+            console.log("WASM Loaded");
+        });
+    </script>
+    <style>
+        body {
+            background-color: #121212;
+            margin: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            background-color: black;
+            border: 2px solid #57a885;
+            box-shadow: 0px 0px 20px 10px rgba(0,0,0,0.25);
+        }
+    </style>
+    </body>
+</html>
