@@ -1,5 +1,8 @@
+use cgmath::{vec3, vec2};
 use wgpu::include_wgsl;
-use winit::{window::Window, event::{WindowEvent, KeyboardInput}};
+use winit::{window::Window, event::KeyboardInput};
+
+use crate::graphics::mesh::{Vertex, Mesh};
 
 pub struct State {
     pub surface  : wgpu::Surface,
@@ -9,6 +12,7 @@ pub struct State {
     pub size     : winit::dpi::PhysicalSize<u32>,
 
     pub pipeline : wgpu::RenderPipeline,
+    pub mesh     : Mesh,
 }
 
 impl State {
@@ -68,7 +72,9 @@ impl State {
             vertex: VertexState {
                 module      : &shader,
                 entry_point : "vertex_main",
-                buffers     : &[],
+                buffers     : &[
+                    Vertex::describe(),
+                ],
             },
             fragment: Some(FragmentState {
                 module      : &shader,
@@ -99,6 +105,14 @@ impl State {
             },
         });
 
+        let vertices = vec![
+            Vertex { pos: vec3( 0.0,  0.5, 0.0), uv: vec2(1.0, 0.0) },
+            Vertex { pos: vec3(-0.5, -0.5, 0.0), uv: vec2(0.0, 1.0) },
+            Vertex { pos: vec3( 0.5, -0.5, 0.0), uv: vec2(0.0, 0.0) },
+        ];
+
+        let mesh = Mesh::new(&device, vertices);
+
         return Self {
             surface,
             device,
@@ -106,6 +120,7 @@ impl State {
             config,
             size,
             pipeline,
+            mesh
         };
     }
 
@@ -156,7 +171,7 @@ impl State {
             });
         
             render_pass.set_pipeline(&self.pipeline);
-            render_pass.draw(0..3, 0..1);
+            self.mesh.draw(&mut render_pass);
         }
     
         self.queue.submit(std::iter::once(encoder.finish()));
