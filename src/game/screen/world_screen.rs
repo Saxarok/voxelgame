@@ -4,7 +4,7 @@ use cgmath::{Deg, vec2, vec3};
 use anyhow::Result;
 use wgpu::include_wgsl;
 use winit::event::{WindowEvent, KeyboardInput};
-use crate::{graphics::{mesh::{Mesh, Vertex}, texture::Texture, camera::{Projection, Camera, CameraUniform}, controller::CameraController, utils, bindable::Bindable}, screen::Screen};
+use crate::{graphics::{mesh::{Mesh, Vertex}, texture::Texture, camera::{Projection, Camera, CameraUniform}, controller::CameraController, utils, bindable::Bindable}, screen::Screen, game::world::player_camera::PlayerCamera};
 
 pub struct WorldScreen {
     pub mesh              : Mesh,
@@ -12,20 +12,15 @@ pub struct WorldScreen {
     pub pipeline          : wgpu::RenderPipeline,
     pub queue             : Rc<wgpu::Queue>,
 
-    pub projection        : Projection,
-    pub camera            : Camera,
-    pub camera_controller : CameraController,
-    pub camera_uniform    : CameraUniform,
+    pub projection : Projection,
+    pub camera     : PlayerCamera,
 }
 
 impl WorldScreen {
     pub fn new(device: &wgpu::Device, queue: Rc<wgpu::Queue>, config: &wgpu::SurfaceConfiguration) -> Result<Self> {
         // Camera
         let projection = Projection::new(config.width, config.height, Deg(90.0), 0.1, 100.0);
-        let camera_controller = CameraController::new(4.0, 1.0);
-        let camera = Camera::new((0.0, 1.0, 2.0), Deg(-90.0), Deg(-20.0));
-        let mut camera_uniform = CameraUniform::new(&device);
-        camera_uniform.update_view_proj(&camera, &projection);
+        let camera = PlayerCamera::new(device);
 
         // Mesh
         let vertices = vec![
@@ -48,7 +43,7 @@ impl WorldScreen {
         let shader = device.create_shader_module(&include_wgsl!("../../../res/core.wgsl"));
         let pipeline = utils::pipeline(&device, &shader, &config, &[
             texture.layout(),
-            camera_uniform.layout(),
+            camera.layout(),
         ]);
 
         return Ok(Self {
@@ -59,8 +54,6 @@ impl WorldScreen {
 
             projection,
             camera,
-            camera_controller,
-            camera_uniform,
         });
     }
 }
@@ -71,23 +64,21 @@ impl Screen for WorldScreen {
             utils::render(encoder, &view, |mut render_pass| {
                 render_pass.set_pipeline(&self.pipeline);
                 self.texture.bind(&mut render_pass, 0);
-                self.camera_uniform.bind(&mut render_pass, 1);
+                self.camera.bind(&mut render_pass, 1);
                 self.mesh.draw(&mut render_pass);
             });
         });
     }
     fn update(&mut self, dt: instant::Duration) {
-        self.camera_controller.update_camera(&mut self.camera, dt);
-        self.camera_uniform.update_view_proj(&self.camera, &self.projection);
-        self.queue.write_buffer(&self.camera_uniform.buffer, 0, bytemuck::cast_slice(&[Into::<[[f32; 4]; 4]>::into(self.camera_uniform.view_proj)]));
+        self.camera.update(&self.projection, &self.queue, dt);
     }
     fn mouse(&mut self, delta: (f64, f64)) {
-        self.camera_controller.process_mouse(delta.0, delta.1);
+        self.camera.on_mouse(delta.0, delta.1);
     }
     fn input(&mut self, event: &WindowEvent) {
         match event {
             WindowEvent::KeyboardInput { input: KeyboardInput { virtual_keycode: Some(key), state, .. }, .. }
-                => { self.camera_controller.process_keyboard(*key, *state); }
+                => { self.camera.on_keyboard(*key, *state); }
 
             _ => {}
         }

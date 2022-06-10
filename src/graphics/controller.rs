@@ -37,7 +37,7 @@ impl CameraController {
         }
     }
 
-    pub fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState){
+    pub fn on_keyboard(&mut self, key: VirtualKeyCode, state: ElementState){
         let amount = if state == ElementState::Pressed { 1.0 } else { 0.0 };
         match key {
             VirtualKeyCode::W => { self.amount_forward = amount; }
@@ -50,7 +50,7 @@ impl CameraController {
         }
     }
 
-    pub fn process_mouse(&mut self, mouse_dx: f64, mouse_dy: f64) {
+    pub fn on_mouse(&mut self, mouse_dx: f64, mouse_dy: f64) {
         self.rotate_horizontal = mouse_dx as f32;
         self.rotate_vertical = mouse_dy as f32;
     }
