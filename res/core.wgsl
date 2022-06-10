@@ -10,10 +10,10 @@ struct VertexOutput {
 };
 
 [[stage(vertex)]]
-fn vertex_main(vertex: VertexInput) -> VertexOutput {
+fn vertex_main(model: VertexInput) -> VertexOutput {
     var out: VertexOutput;
-    out.clip_pos = vec4<f32>(vertex.pos, 1.0);
-    out.uv       = vertex.uv;
+    out.clip_pos = vec4<f32>(model.pos, 1.0);
+    out.uv       = model.uv;
 
     return out;
 }

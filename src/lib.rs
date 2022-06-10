@@ -21,8 +21,11 @@ pub async fn run() {
     init_logger();
     let event_loop = EventLoop::new();
     let window = create_window(&event_loop);
+    window.set_cursor_grab(true).unwrap();
+    window.set_cursor_visible(false);
 
     let mut state = State::new(&window).await.unwrap();
+    let mut last_render_time = instant::Instant::now();
 
     event_loop.run(move |event, _, control_flow|
         match event {
@@ -30,23 +33,26 @@ pub async fn run() {
                 window.request_redraw();
             }
 
-            Event::RedrawRequested(window_id)
-            if window_id == window.id() => {
-                state.update();
+            Event::RedrawRequested(window_id) if window_id == window.id() => {
+                let now = instant::Instant::now();
+                let dt = now - last_render_time;
+                last_render_time = now;
+
+                state.update(dt);
                 state.render();
             }
 
-            Event::WindowEvent { event, window_id }
-            if window_id == window.id() => {
+            Event::DeviceEvent { event: DeviceEvent::MouseMotion{ delta, }, .. }
+                => { state.mouse(delta) }
+
+            Event::WindowEvent { event, window_id } if window_id == window.id() => {
                 match event {
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                     
                     WindowEvent::Resized            ( physical_size )      => state.resize(physical_size),
                     WindowEvent::ScaleFactorChanged { new_inner_size, .. } => state.resize(*new_inner_size),
 
-                    WindowEvent::KeyboardInput { input, .. } => state.input(&input),
-
-                    _ => {}
+                    _ => state.input(&event),
                 }
             }
 

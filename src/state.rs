@@ -1,7 +1,7 @@
 use anyhow::{Result, Context};
 use cgmath::{vec3, vec2};
-use wgpu::{include_wgsl};
-use winit::{window::Window, event::KeyboardInput};
+use wgpu::{include_wgsl, util::DeviceExt};
+use winit::{window::Window, event::{KeyboardInput, WindowEvent, MouseButton, ElementState}};
 
 use crate::graphics::{mesh::{Vertex, Mesh}, texture::Texture};
 
@@ -171,9 +171,13 @@ impl State {
             queue,
             config,
             size,
+
+            // Extra stuff
             mesh,
             texture,
             bind_group,
+
+            // Pipeline
             pipeline,
         });
     }
@@ -187,12 +191,9 @@ impl State {
         }
     }
 
-    pub fn input(&mut self, input: &KeyboardInput) {
-    }
-
-    pub fn update(&mut self) {
-    }
-
+    pub fn mouse(&mut self, delta: (f64, f64)) {}
+    pub fn input(&mut self, event: &WindowEvent) { }
+    pub fn update(&mut self, dt: instant::Duration) { }
     pub fn render(&mut self) {
         let output = self.surface.get_current_texture().unwrap();
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -225,7 +226,7 @@ impl State {
             });
         
             render_pass.set_pipeline(&self.pipeline);
-            render_pass.set_bind_group(0, &self.bind_group, &[]); 
+            render_pass.set_bind_group(0, &self.bind_group, &[]);
             self.mesh.draw(&mut render_pass);
         }
     
