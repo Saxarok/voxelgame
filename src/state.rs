@@ -3,7 +3,7 @@ use cgmath::{vec3, vec2, Deg};
 use wgpu::{include_wgsl, util::DeviceExt};
 use winit::{window::Window, event::{KeyboardInput, WindowEvent}};
 
-use crate::graphics::{mesh::{Vertex, Mesh}, texture::Texture, camera::{Camera, CameraUniform, Projection}, controller::CameraController, utils};
+use crate::graphics::{mesh::{Vertex, Mesh}, texture::Texture, camera::{Camera, CameraUniform, Projection}, controller::CameraController, utils, bindable::Bindable};
 
 pub struct State {
     pub surface           : wgpu::Surface,
@@ -14,15 +14,12 @@ pub struct State {
 
     pub mesh              : Mesh,
     pub texture           : Texture,
-    pub bind_group        : wgpu::BindGroup,
     pub pipeline          : wgpu::RenderPipeline,
 
     pub projection        : Projection,
     pub camera            : Camera,
     pub camera_controller : CameraController,
     pub camera_uniform    : CameraUniform,
-    pub camera_buffer     : wgpu::Buffer,
-    pub camera_bind_group : wgpu::BindGroup,
 }
 
 impl State {
@@ -69,90 +66,14 @@ impl State {
         let data = include_bytes!("../res/test.png");
         let texture = Texture::from_bytes(&device, &queue, data, wgpu::FilterMode::Nearest, "test.png")?;
 
-        let texture_bind_group_layout =
-        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding    : 0,
-                    visibility : wgpu::ShaderStages::FRAGMENT,
-                    ty         : wgpu::BindingType::Texture {
-                        multisampled   : false,
-                        view_dimension : wgpu::TextureViewDimension::D2,
-                        sample_type    : wgpu::TextureSampleType::Float { filterable: true },
-                    },
-                    count      : None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding    : 1,
-                    visibility : wgpu::ShaderStages::FRAGMENT,
-                    // This should match the filterable field of the corresponding Texture entry above.
-                    ty         : wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count      : None,
-                },
-            ],
-            label: Some("texture_bind_group_layout"),
-        });
-
-        let bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                layout: &texture_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding  : 0,
-                        resource : wgpu::BindingResource::TextureView(&texture.view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding  : 1,
-                        resource : wgpu::BindingResource::Sampler(&texture.sampler),
-                    }
-                ],
-                label: Some("diffuse_bind_group"),
-            }
-        );
-
         let camera_controller = CameraController::new(4.0, 1.0);
 
         let projection = Projection::new(config.width, config.height, Deg(90.0), 0.1, 100.0);
 
         let camera = Camera::new((0.0, 1.0, 2.0), Deg(-90.0), Deg(-20.0));
 
-        let mut camera_uniform = CameraUniform::new();
+        let mut camera_uniform = CameraUniform::new(&device);
         camera_uniform.update_view_proj(&camera, &projection);
-
-        let camera_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Camera Buffer"),
-                contents: bytemuck::cast_slice(&[camera_uniform]),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            }
-        );
-
-        let camera_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }
-            ],
-            label: Some("camera_bind_group_layout"),
-        });
-
-        let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &camera_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: camera_buffer.as_entire_binding(),
-                }
-            ],
-            label: Some("camera_bind_group"),
-        });
 
         // Shaders
         let shader = device.create_shader_module(&include_wgsl!("../res/core.wgsl"));
@@ -160,8 +81,8 @@ impl State {
             label: Some("Render Pipeline Layout"),
             push_constant_ranges : &[],
             bind_group_layouts   : &[
-                &texture_bind_group_layout,
-                &camera_bind_group_layout,
+                texture.layout(),
+                camera_uniform.layout(),
             ],
         });
 
@@ -229,15 +150,12 @@ impl State {
             // Extra stuff
             mesh,
             texture,
-            bind_group,
 
             // Camera
             projection,
             camera,
             camera_controller,
             camera_uniform,
-            camera_buffer,
-            camera_bind_group,
 
             // Pipeline
             pipeline,
@@ -270,7 +188,7 @@ impl State {
     pub fn update(&mut self, dt: instant::Duration) {
         self.camera_controller.update_camera(&mut self.camera, dt);
         self.camera_uniform.update_view_proj(&self.camera, &self.projection);
-        self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform]));
+        self.queue.write_buffer(&self.camera_uniform.buffer, 0, bytemuck::cast_slice(&[Into::<[[f32; 4]; 4]>::into(self.camera_uniform.view_proj)]));
     }
 
     pub fn render(&mut self) {
@@ -280,8 +198,8 @@ impl State {
         utils::submit(&self.queue, &self.device, |encoder| {
             utils::render(encoder, &view, |mut render_pass| {
                 render_pass.set_pipeline(&self.pipeline);
-                render_pass.set_bind_group(0, &self.bind_group, &[]);
-                render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+                self.texture.bind(&mut render_pass, 0);
+                self.camera_uniform.bind(&mut render_pass, 1);
                 self.mesh.draw(&mut render_pass);
             });
         });

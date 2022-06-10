@@ -2,10 +2,15 @@ use image::{GenericImageView, DynamicImage};
 use wgpu::{Device, Queue, FilterMode};
 use anyhow::Result;
 
+use super::bindable::Bindable;
+
 pub struct Texture {
     pub sampler : wgpu::Sampler,
     pub texture : wgpu::Texture,
     pub view    : wgpu::TextureView,
+    
+    bind_group        : wgpu::BindGroup,
+    bind_group_layout : wgpu::BindGroupLayout,
 }
 
 impl Texture {
@@ -15,7 +20,7 @@ impl Texture {
                       filter_mode : FilterMode,
                       label       : &str) -> Result<Self> {
         let img = image::load_from_memory(bytes)?.flipv();
-        Self::from_image(device, queue, &img, filter_mode, Some(label))
+        return Self::from_image(device, queue, &img, filter_mode, Some(label));
     }
 
     pub fn from_image(device      : &Device,
@@ -25,11 +30,10 @@ impl Texture {
                       label       : Option<&str>) -> Result<Self> {
         let rgba = img.to_rgba8();
         let dimensions = img.dimensions();
-
         let size = wgpu::Extent3d {
-            width: dimensions.0,
-            height: dimensions.1,
-            depth_or_array_layers: 1,
+            width                 : dimensions.0,
+            height                : dimensions.1,
+            depth_or_array_layers : 1,
         };
 
         let texture = device.create_texture(
@@ -45,6 +49,7 @@ impl Texture {
             }
         );
 
+        // Upload texture
         queue.write_texture(
             wgpu::ImageCopyTexture {
                 aspect    : wgpu::TextureAspect::All,
@@ -61,6 +66,7 @@ impl Texture {
             size,
         );
 
+        // Shaders stuff
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         let sampler = device.create_sampler(
             &wgpu::SamplerDescriptor {
@@ -74,6 +80,57 @@ impl Texture {
             }
         );
 
-        return Ok(Self { texture, view, sampler });
+        // Binding stuff
+        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding    : 0,
+                    visibility : wgpu::ShaderStages::FRAGMENT,
+                    ty         : wgpu::BindingType::Texture {
+                        multisampled   : false,
+                        view_dimension : wgpu::TextureViewDimension::D2,
+                        sample_type    : wgpu::TextureSampleType::Float { filterable: true },
+                    },
+                    count      : None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding    : 1,
+                    visibility : wgpu::ShaderStages::FRAGMENT,
+                    // This should match the filterable field of the corresponding Texture entry above.
+                    ty         : wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count      : None,
+                },
+            ],
+            label: Some("texture_bind_group_layout"),
+        });
+
+        let bind_group = device.create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                layout: &bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding  : 0,
+                        resource : wgpu::BindingResource::TextureView(&view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding  : 1,
+                        resource : wgpu::BindingResource::Sampler(&sampler),
+                    }
+                ],
+                label: Some("diffuse_bind_group"),
+            }
+        );
+        
+        return Ok(Self { texture, view, sampler, bind_group, bind_group_layout });
+    }
+}
+
+impl Bindable for Texture {
+    fn bind<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>, index: u32) {
+        render_pass.set_bind_group(index, &self.bind_group, &[]);
+    }
+
+    fn layout(&self) -> &wgpu::BindGroupLayout {
+        return &self.bind_group_layout;
     }
 }
