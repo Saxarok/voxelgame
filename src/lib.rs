@@ -1,8 +1,9 @@
 mod state;
+mod game;
 mod graphics;
 mod screen;
 
-use state::State;
+use game::game::Game;
 
 use winit::{
     event::*,
@@ -25,7 +26,7 @@ pub async fn run() {
     window.set_cursor_grab(true).unwrap();
     window.set_cursor_visible(false);
 
-    let mut state = State::new(&window).await.unwrap();
+    let mut game = Game::new(&window).await.unwrap();
     let mut last_render_time = instant::Instant::now();
 
     event_loop.run(move |event, _, control_flow|
@@ -39,21 +40,21 @@ pub async fn run() {
                 let dt = now - last_render_time;
                 last_render_time = now;
 
-                state.update(dt);
-                state.render();
+                game.state.update(dt);
+                game.state.render();
             }
 
             Event::DeviceEvent { event: DeviceEvent::MouseMotion{ delta, }, .. }
-                => { state.mouse(delta) }
+                => { game.state.mouse(delta) }
 
             Event::WindowEvent { event, window_id } if window_id == window.id() => {
                 match event {
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                     
-                    WindowEvent::Resized            ( physical_size )      => state.resize(physical_size),
-                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => state.resize(*new_inner_size),
+                    WindowEvent::Resized            ( physical_size )      => game.state.resize(physical_size),
+                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => game.state.resize(*new_inner_size),
 
-                    _ => state.input(&event),
+                    _ => game.state.input(&event),
                 }
             }
 
