@@ -62,70 +62,12 @@ impl State {
 
         surface.configure(&device, &config);
 
-        // Textures
-        let data = include_bytes!("../res/test.png");
-        let texture = Texture::from_bytes(&device, &queue, data, wgpu::FilterMode::Nearest, "test.png")?;
-
-        let camera_controller = CameraController::new(4.0, 1.0);
-
+        // Camera
         let projection = Projection::new(config.width, config.height, Deg(90.0), 0.1, 100.0);
-
+        let camera_controller = CameraController::new(4.0, 1.0);
         let camera = Camera::new((0.0, 1.0, 2.0), Deg(-90.0), Deg(-20.0));
-
         let mut camera_uniform = CameraUniform::new(&device);
         camera_uniform.update_view_proj(&camera, &projection);
-
-        // Shaders
-        let shader = device.create_shader_module(&include_wgsl!("../res/core.wgsl"));
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Render Pipeline Layout"),
-            push_constant_ranges : &[],
-            bind_group_layouts   : &[
-                texture.layout(),
-                camera_uniform.layout(),
-            ],
-        });
-
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label  : Some("Render Pipeline"),
-            layout : Some(&pipeline_layout),
-
-            // Shaders
-            vertex: wgpu::VertexState {
-                module      : &shader,
-                entry_point : "vertex_main",
-                buffers     : &[
-                    Vertex::describe(),
-                ],
-            },
-            fragment: Some(wgpu::FragmentState {
-                module      : &shader,
-                entry_point : "fragment_main",
-                targets     : &[wgpu::ColorTargetState {
-                    format     : config.format,
-                    blend      : Some(wgpu::BlendState::REPLACE),
-                    write_mask : wgpu::ColorWrites::ALL,
-                }],
-            }),
-
-            // Other
-            primitive: wgpu::PrimitiveState {
-                topology           : wgpu::PrimitiveTopology::TriangleList,
-                strip_index_format : None,
-                front_face         : wgpu::FrontFace::Ccw,
-                cull_mode          : Some(wgpu::Face::Back),
-                polygon_mode       : wgpu::PolygonMode::Fill, // Other modes require Features::NON_FILL_POLYGON_MODE
-                unclipped_depth    : false,                   // Requires Features::DEPTH_CLIP_CONTROL
-                conservative       : false,                   // Requires Features::CONSERVATIVE_RASTERIZATION
-            },
-            depth_stencil : None,
-            multiview     : None,
-            multisample   : wgpu::MultisampleState {
-                count                     : 1,
-                mask                      : !0,
-                alpha_to_coverage_enabled : false,
-            },
-        });
 
         // Mesh
         let vertices = vec![
@@ -139,6 +81,17 @@ impl State {
         ];
 
         let mesh = Mesh::new(&device, vertices);
+
+        // Textures
+        let data = include_bytes!("../res/test.png");
+        let texture = Texture::from_bytes(&device, &queue, data, wgpu::FilterMode::Nearest, "test.png")?;
+
+        // Shaders
+        let shader = device.create_shader_module(&include_wgsl!("../res/core.wgsl"));
+        let pipeline = utils::pipeline(&device, &shader, &config, &[
+            texture.layout(),
+            camera_uniform.layout(),
+        ]);
 
         return Ok(Self {
             surface,
