@@ -1,5 +1,8 @@
 # unnamed voxel game
-Temporary todo list: 
+## Build Instructions
+Setup a rust toolchain
+
+## Temporary todo list:
 * Come up with a nice shader/uniform abstraction
 * Refactor code to use a reference to `queue` instead of `Rc`
 * Think of a proc derive macro for `Bindable`
@@ -8,3 +11,6 @@ Temporary todo list:
 * Specify all `Bindable`s in a pipeline and automatically bind them
 * Decouple rendering code from data
 * ***THINK OF DEPENDENCY INJECTION***
+
+## Special Thanks
+* [Vilkillian](https://github.com/orgs/OpenGames/people/ZecosMAX) - helped with UV coordinates

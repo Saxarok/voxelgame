@@ -12,7 +12,7 @@ pub struct PlayerCamera {
 impl PlayerCamera {
     pub fn new(device: &wgpu::Device) -> Self {
         let camera_controller = CameraController::new(4.0, 1.0);
-        let camera = Camera::new((0.0, 1.0, 2.0), Deg(-90.0), Deg(-20.0));
+        let camera = Camera::new((0.0, 0.0, 0.0), Deg(0.0), Deg(0.0));
         let camera_uniform = CameraUniform::new(&device);
 
         return Self {
