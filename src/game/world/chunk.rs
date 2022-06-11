@@ -44,6 +44,7 @@ impl Chunk {
                 for k in 0 .. CHUNK_SIZE {
                     if data[Self::index::<CHUNK_SIZE>(i, j, k)] {
                         vertices.extend_from_slice(&[
+                            // TOP (Y+)
                             Vertex { pos: vec3((0 + i) as f32, (1 + j) as f32, (0 + k) as f32), uv: vec2(0.0, 0.0) },
                             Vertex { pos: vec3((0 + i) as f32, (1 + j) as f32, (1 + k) as f32), uv: vec2(0.0, 1.0) },
                             Vertex { pos: vec3((1 + i) as f32, (1 + j) as f32, (1 + k) as f32), uv: vec2(1.0, 1.0) },
@@ -51,6 +52,51 @@ impl Chunk {
                             Vertex { pos: vec3((0 + i) as f32, (1 + j) as f32, (0 + k) as f32), uv: vec2(0.0, 0.0) },
                             Vertex { pos: vec3((1 + i) as f32, (1 + j) as f32, (1 + k) as f32), uv: vec2(1.0, 1.0) },
                             Vertex { pos: vec3((1 + i) as f32, (1 + j) as f32, (0 + k) as f32), uv: vec2(1.0, 0.0) },
+                            
+                            // BOTTOM (Y-)
+                            Vertex { pos: vec3((1 + i) as f32, (0 + j) as f32, (1 + k) as f32), uv: vec2(1.0, 1.0) },
+                            Vertex { pos: vec3((0 + i) as f32, (0 + j) as f32, (1 + k) as f32), uv: vec2(0.0, 1.0) },
+                            Vertex { pos: vec3((0 + i) as f32, (0 + j) as f32, (0 + k) as f32), uv: vec2(0.0, 0.0) },
+                            
+                            Vertex { pos: vec3((1 + i) as f32, (0 + j) as f32, (0 + k) as f32), uv: vec2(1.0, 0.0) },
+                            Vertex { pos: vec3((1 + i) as f32, (0 + j) as f32, (1 + k) as f32), uv: vec2(1.0, 1.0) },
+                            Vertex { pos: vec3((0 + i) as f32, (0 + j) as f32, (0 + k) as f32), uv: vec2(0.0, 0.0) },
+                            
+                            // FRONT (X+)
+                            Vertex { pos: vec3((0 + i) as f32, (0 + j) as f32, (1 + k) as f32), uv: vec2(0.0, 0.0) },
+                            Vertex { pos: vec3((1 + i) as f32, (0 + j) as f32, (1 + k) as f32), uv: vec2(0.0, 1.0) },
+                            Vertex { pos: vec3((1 + i) as f32, (1 + j) as f32, (1 + k) as f32), uv: vec2(1.0, 1.0) },
+                            
+                            Vertex { pos: vec3((0 + i) as f32, (0 + j) as f32, (1 + k) as f32), uv: vec2(0.0, 0.0) },
+                            Vertex { pos: vec3((1 + i) as f32, (1 + j) as f32, (1 + k) as f32), uv: vec2(1.0, 1.0) },
+                            Vertex { pos: vec3((0 + i) as f32, (1 + j) as f32, (1 + k) as f32), uv: vec2(1.0, 0.0) },
+                            
+                            // BACK (X-)
+                            Vertex { pos: vec3((0 + i) as f32, (0 + j) as f32, (0 + k) as f32), uv: vec2(0.0, 0.0) },
+                            Vertex { pos: vec3((0 + i) as f32, (1 + j) as f32, (0 + k) as f32), uv: vec2(1.0, 0.0) },
+                            Vertex { pos: vec3((1 + i) as f32, (1 + j) as f32, (0 + k) as f32), uv: vec2(1.0, 1.0) },
+                            
+                            Vertex { pos: vec3((1 + i) as f32, (1 + j) as f32, (0 + k) as f32), uv: vec2(1.0, 1.0) },
+                            Vertex { pos: vec3((1 + i) as f32, (0 + j) as f32, (0 + k) as f32), uv: vec2(0.0, 1.0) },
+                            Vertex { pos: vec3((0 + i) as f32, (0 + j) as f32, (0 + k) as f32), uv: vec2(0.0, 0.0) },
+                            
+                            // RIGHT (Z+)
+                            Vertex { pos: vec3((1 + i) as f32, (0 + j) as f32, (0 + k) as f32), uv: vec2(0.0, 0.0) },
+                            Vertex { pos: vec3((1 + i) as f32, (1 + j) as f32, (0 + k) as f32), uv: vec2(1.0, 1.0) },
+                            Vertex { pos: vec3((1 + i) as f32, (1 + j) as f32, (1 + k) as f32), uv: vec2(1.0, 0.0) },
+                            
+                            Vertex { pos: vec3((1 + i) as f32, (1 + j) as f32, (1 + k) as f32), uv: vec2(1.0, 1.0) },
+                            Vertex { pos: vec3((1 + i) as f32, (0 + j) as f32, (1 + k) as f32), uv: vec2(0.0, 1.0) },
+                            Vertex { pos: vec3((1 + i) as f32, (0 + j) as f32, (0 + k) as f32), uv: vec2(0.0, 0.0) },
+
+                            // LEFT (Z-)
+                            Vertex { pos: vec3((0 + i) as f32, (0 + j) as f32, (0 + k) as f32), uv: vec2(0.0, 0.0) },
+                            Vertex { pos: vec3((0 + i) as f32, (0 + j) as f32, (1 + k) as f32), uv: vec2(1.0, 0.0) },
+                            Vertex { pos: vec3((0 + i) as f32, (1 + j) as f32, (1 + k) as f32), uv: vec2(1.0, 1.0) },
+                            
+                            Vertex { pos: vec3((0 + i) as f32, (1 + j) as f32, (1 + k) as f32), uv: vec2(1.0, 1.0) },
+                            Vertex { pos: vec3((0 + i) as f32, (1 + j) as f32, (0 + k) as f32), uv: vec2(0.0, 1.0) },
+                            Vertex { pos: vec3((0 + i) as f32, (0 + j) as f32, (0 + k) as f32), uv: vec2(0.0, 0.0) },
                         ]);
                     }
 
