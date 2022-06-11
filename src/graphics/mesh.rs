@@ -1,6 +1,8 @@
 use cgmath::{Vector3, Vector2};
 use wgpu::util::DeviceExt;
 
+use super::drawable::Drawable;
+
 unsafe impl bytemuck::Pod for Vertex {}
 unsafe impl bytemuck::Zeroable for Vertex {}
 
@@ -12,34 +14,27 @@ pub struct Vertex {
 }
 
 impl Vertex {
-    const ATTRIBS: [wgpu::VertexAttribute; 2] =
-        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3];
+    const ATTRIBUTES: [wgpu::VertexAttribute; 2] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3];
 
     pub fn describe<'a>() -> wgpu::VertexBufferLayout<'a> {
         use std::mem;
 
         wgpu::VertexBufferLayout {
-            array_stride: mem::size_of::<Self>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &Self::ATTRIBS,
+            array_stride : mem::size_of::<Self>() as wgpu::BufferAddress,
+            step_mode    : wgpu::VertexStepMode::Vertex,
+            attributes   : &Self::ATTRIBUTES,
         }
     }
 }
 
 pub struct Mesh {
-    buffer   : wgpu::Buffer,
-    vertices : Vec<Vertex>
+        buffer   : wgpu::Buffer,
+    pub vertices : Vec<Vertex>
 }
 
 impl Mesh {
     pub fn new(device: &wgpu::Device, vertices: Vec<Vertex>) -> Self {
-        let buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(&vertices),
-                usage: wgpu::BufferUsages::VERTEX,
-            }
-        );
+        let buffer = Mesh::make_buffer(device, &vertices);
 
         return Self {
             buffer,
@@ -47,7 +42,23 @@ impl Mesh {
         };
     }
 
-    pub fn draw<'a>(&'a self, render_pass: &mut wgpu::RenderPass::<'a>) {
+    pub fn bake(&mut self, device: &wgpu::Device) {
+        self.buffer = Mesh::make_buffer(device, &self.vertices);
+    }
+
+    fn make_buffer(device: &wgpu::Device, vertices: &[Vertex]) -> wgpu::Buffer {
+        return device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: None,
+                contents: bytemuck::cast_slice(&vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            }
+        );
+    }
+}
+
+impl Drawable for Mesh {
+    fn draw<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
         let slice = self.buffer.slice(..);
         render_pass.set_vertex_buffer(0, slice);
         render_pass.draw(0 .. self.vertices.len() as u32, 0 .. 1);

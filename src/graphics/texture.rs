@@ -21,7 +21,7 @@ impl Texture {
                       bytes       : &[u8],
                       filter_mode : FilterMode,
                       label       : &str) -> Result<Self> {
-        let img = image::load_from_memory(bytes)?.flipv();
+        let img = image::load_from_memory(bytes)?;
         return Self::from_image(device, queue, &img, filter_mode, Some(label));
     }
 

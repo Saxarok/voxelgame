@@ -1,8 +1,8 @@
-use wgpu::Device;
+use wgpu::{Device, TextureView};
 
-use super::mesh::Vertex;
+use super::{mesh::Vertex, texture::Texture, depth_buffer::DepthBuffer};
 
-pub fn render_pass<'a>(encoder: &'a mut wgpu::CommandEncoder, view: &'a wgpu::TextureView) -> wgpu::RenderPass<'a> {
+pub fn render_pass<'a>(encoder: &'a mut wgpu::CommandEncoder, view: &'a wgpu::TextureView, depth_buffer: Option<&'a TextureView>) -> wgpu::RenderPass<'a> {
     return encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("Render Pass"),
         color_attachments: &[
@@ -23,14 +23,22 @@ pub fn render_pass<'a>(encoder: &'a mut wgpu::CommandEncoder, view: &'a wgpu::Te
                 }
             }
         ],
-        depth_stencil_attachment: None,
+        depth_stencil_attachment: if depth_buffer.is_some() { Some(wgpu::RenderPassDepthStencilAttachment {
+            view: depth_buffer.unwrap(),
+            depth_ops: Some(wgpu::Operations {
+                load: wgpu::LoadOp::Clear(1.0),
+                store: true,
+            }),
+            stencil_ops: None,
+        }) } else { None },
     });
 }
 
-pub fn render<'a>(encoder : &'a mut wgpu::CommandEncoder,
-                    view    : &'a wgpu::TextureView,
-                    lambda  : impl FnOnce(wgpu::RenderPass<'a>) -> ()) {
-    let pass = render_pass(encoder, view);
+pub fn render<'a>(encoder        : &'a mut wgpu::CommandEncoder,
+                    view         : &'a wgpu::TextureView,
+                    depth_buffer : Option<&'a TextureView>,
+                    lambda       : impl FnOnce(wgpu::RenderPass<'a>,) -> ()) {
+    let pass = render_pass(encoder, view, depth_buffer);
     lambda(pass);
 }
 
@@ -80,11 +88,17 @@ pub fn pipeline(device: &Device,
             strip_index_format : None,
             front_face         : wgpu::FrontFace::Ccw,
             cull_mode          : Some(wgpu::Face::Back),
-            polygon_mode       : wgpu::PolygonMode::Fill, // Other modes require Features::NON_FILL_POLYGON_MODE
+            polygon_mode       : wgpu::PolygonMode::Fill, // Other modes require certain features
             unclipped_depth    : false,                   // Requires Features::DEPTH_CLIP_CONTROL
             conservative       : false,                   // Requires Features::CONSERVATIVE_RASTERIZATION
         },
-        depth_stencil : None,
+        depth_stencil : Some(wgpu::DepthStencilState {
+            format: DepthBuffer::DEPTH_FORMAT,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::Less,
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
+        }),
         multiview     : None,
         multisample   : wgpu::MultisampleState {
             count                     : 1,
