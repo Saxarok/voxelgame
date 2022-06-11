@@ -29,7 +29,7 @@ pub async fn run() {
     let mut game = Game::new(&window).await.unwrap();
     let mut last_render_time = instant::Instant::now();
 
-    event_loop.run(move |event, _, control_flow|
+    event_loop.run(move |event, _, control_flow| {
         match event {
             Event::MainEventsCleared => {
                 window.request_redraw();
@@ -37,7 +37,7 @@ pub async fn run() {
 
             Event::RedrawRequested(window_id) if window_id == window.id() => {
                 let now = instant::Instant::now();
-                let dt = now - last_render_time;
+                let dt  = now - last_render_time;
                 last_render_time = now;
 
                 game.state.update(dt);
@@ -60,7 +60,7 @@ pub async fn run() {
 
             _ => {}
         }
-    );
+    });
 }
 
 // Helpers
