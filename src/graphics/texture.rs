@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use image::{GenericImageView, DynamicImage};
 use wgpu::{Device, Queue, FilterMode};
 use anyhow::Result;

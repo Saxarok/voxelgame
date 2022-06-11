@@ -1,24 +1,39 @@
 use std::rc::Rc;
 
-use cgmath::{Deg, vec2, vec3};
+use crate::{
+    game::world::{chunk::Chunk, player_camera::PlayerCamera},
+    graphics::{
+        bindable::Bindable,
+        camera::Projection,
+        depth_buffer::DepthBuffer,
+        drawable::Drawable,
+        texture::Texture,
+        utils,
+    },
+    screen::Screen,
+};
 use anyhow::Result;
+use cgmath::Deg;
 use wgpu::include_wgsl;
-use winit::event::{WindowEvent, KeyboardInput};
-use crate::{graphics::{mesh::{Mesh, Vertex}, texture::Texture, camera::Projection, utils, bindable::Bindable, drawable::Drawable, depth_buffer::DepthBuffer}, screen::Screen, game::world::{player_camera::PlayerCamera, chunk::Chunk}};
+use winit::event::{KeyboardInput, WindowEvent};
 
 pub struct WorldScreen {
-    pub chunk             : Chunk,
-    pub texture           : Texture,
-    pub pipeline          : wgpu::RenderPipeline,
-    pub queue             : Rc<wgpu::Queue>,
+    pub chunk: Chunk,
+    pub texture: Texture,
+    pub pipeline: wgpu::RenderPipeline,
+    pub queue: Rc<wgpu::Queue>,
 
-    pub projection   : Projection,
-    pub camera       : PlayerCamera,
-    pub depth_buffer : DepthBuffer,
+    pub projection: Projection,
+    pub camera: PlayerCamera,
+    pub depth_buffer: DepthBuffer,
 }
 
 impl WorldScreen {
-    pub fn new(device: &wgpu::Device, queue: Rc<wgpu::Queue>, config: &wgpu::SurfaceConfiguration) -> Result<Self> {
+    pub fn new(
+        device: &wgpu::Device,
+        queue: Rc<wgpu::Queue>,
+        config: &wgpu::SurfaceConfiguration,
+    ) -> Result<Self> {
         // Camera
         let projection = Projection::new(config.width, config.height, Deg(90.0), 0.1, 100.0);
         let camera = PlayerCamera::new(device);
@@ -54,7 +69,7 @@ impl WorldScreen {
 }
 
 impl Screen for WorldScreen {
-    fn render(&self, surface: &wgpu::Surface, view: &wgpu::TextureView, queue: &wgpu::Queue, device: &wgpu::Device) {
+    fn render(&self, view: &wgpu::TextureView, queue: &wgpu::Queue, device: &wgpu::Device) {
         utils::submit(&queue, device, |encoder| {
             utils::render(encoder, &view, Some(&self.depth_buffer.view), |mut render_pass| {
                 render_pass.set_pipeline(&self.pipeline);

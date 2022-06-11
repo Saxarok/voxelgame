@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
 use anyhow::{Result, Context};
-use winit::{window::Window, event::{KeyboardInput, WindowEvent}};
+use winit::{window::Window, event::WindowEvent};
 
-use crate::{screen::Screen, graphics::utils};
+use crate::{screen::Screen};
 
 pub struct State {
     pub surface : wgpu::Surface,
@@ -97,7 +97,7 @@ impl State {
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
 
         for screen in &self.screen_stack {
-            screen.render(&self.surface, &view, &self.queue, &self.device);
+            screen.render(&view, &self.queue, &self.device);
         }
     
         output.present();

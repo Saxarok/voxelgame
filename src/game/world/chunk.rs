@@ -13,7 +13,7 @@ pub struct Chunk {
 
 impl Drawable for Chunk {
     fn draw<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
-        let slice = self.mesh.draw(render_pass);
+        self.mesh.draw(render_pass);
     }
 }
 
@@ -109,7 +109,7 @@ impl Chunk {
         return vertices;
     }
 
-    fn index<const max: usize>(x: usize, y: usize, z: usize) -> usize {
-        return (z * max * max) + (y * max) + x;
+    fn index<const MAX: usize>(x: usize, y: usize, z: usize) -> usize {
+        return (z * MAX * MAX) + (y * MAX) + x;
     }
 }
