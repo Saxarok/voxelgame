@@ -108,6 +108,7 @@ pub fn pipeline(device: &Device,
     });
 }
 
+#[derive(Clone, Copy)]
 pub enum Side {
     Top    , // Y+
     Bottom , // Y-

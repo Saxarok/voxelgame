@@ -42,6 +42,7 @@ impl Mesh {
         };
     }
 
+    // TODO: opt for a safer approach and make vertices private?
     pub fn bake(&mut self, device: &wgpu::Device) {
         self.buffer = Mesh::make_buffer(device, &self.vertices);
     }

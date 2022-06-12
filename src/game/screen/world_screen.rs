@@ -1,14 +1,13 @@
 use std::rc::Rc;
 
 use crate::{
-    game::world::{chunk::Chunk, player_camera::PlayerCamera},
+    game::world::{player_camera::PlayerCamera, chunk::{chunk::Chunk, chunk_renderer::ChunkRenderer}},
     graphics::{
         bindable::Bindable,
         camera::Projection,
         depth_buffer::DepthBuffer,
-        drawable::Drawable,
         texture::Texture,
-        utils,
+        utils, drawable::Drawable,
     },
     screen::Screen,
 };
@@ -18,8 +17,9 @@ use wgpu::include_wgsl;
 use winit::event::{KeyboardInput, WindowEvent};
 
 pub struct WorldScreen {
-    pub chunk: Chunk,
-    pub texture: Texture,
+    pub chunk_renderer: ChunkRenderer,
+    pub chunk         : Chunk,
+    
     pub pipeline: wgpu::RenderPipeline,
     pub queue: Rc<wgpu::Queue>,
 
@@ -41,23 +41,25 @@ impl WorldScreen {
         // Rendering
         let depth_buffer = DepthBuffer::new(device, config);
 
-        // Mesh
-        let chunk = Chunk::new(device);
-
-        // Textures
+        // Chunks
         let data = include_bytes!("../../../res/test.png");
-        let texture = Texture::from_bytes(&device, &queue, data, wgpu::FilterMode::Nearest, "test.png")?;
+        let texture_atlas = Texture::from_bytes(&device, &queue, data, wgpu::FilterMode::Nearest, "test.png")?;
+
+        let chunk = Chunk::new();
+        let mut chunk_renderer = ChunkRenderer::new(texture_atlas);
+        chunk_renderer.add(device, &chunk);
 
         // Shaders
         let shader = device.create_shader_module(&include_wgsl!("../../../res/core.wgsl"));
         let pipeline = utils::pipeline(&device, &shader, &config, &[
-            texture.layout(),
+            &chunk_renderer.texture_atlas.layout(), // TODO: move pipeline into ChunkRenderer
             camera.layout(),
         ]);
 
         return Ok(Self {
+            chunk_renderer,
             chunk,
-            texture,
+
             pipeline,
             queue,
 
@@ -73,9 +75,8 @@ impl Screen for WorldScreen {
         utils::submit(&queue, device, |encoder| {
             utils::render(encoder, &view, Some(&self.depth_buffer.view), |mut render_pass| {
                 render_pass.set_pipeline(&self.pipeline);
-                self.texture.bind(&mut render_pass, 0);
                 self.camera.bind(&mut render_pass, 1);
-                self.chunk.draw(&mut render_pass);
+                self.chunk_renderer.draw(&mut render_pass);
             });
         });
     }
