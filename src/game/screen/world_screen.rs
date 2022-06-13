@@ -1,13 +1,12 @@
 use std::rc::Rc;
 
 use crate::{
-    game::world::{player_camera::PlayerCamera, chunk::{chunk::Chunk, chunk_renderer::ChunkRenderer}},
+    game::world::{player_camera::PlayerCamera, chunk::{chunk::{Chunk, BlockState}, chunk_renderer::ChunkRenderer}},
     graphics::{
         bindable::Bindable,
         camera::Projection,
         depth_buffer::DepthBuffer,
-        texture::Texture,
-        utils, drawable::Drawable,
+        utils, atlas::Atlas, drawable::Drawable,
     },
     screen::Screen,
 };
@@ -41,9 +40,13 @@ impl WorldScreen {
         // Rendering
         let depth_buffer = DepthBuffer::new(device, config);
 
-        // Chunks
-        let data = include_bytes!("../../../res/test.png");
-        let texture_atlas = Texture::from_bytes(&device, &queue, data, wgpu::FilterMode::Nearest, "test.png")?;
+        // Chunks, btw it should be about time we start using resource stores...
+        let image_test = image::load_from_memory(include_bytes!("../../../res/test.png"))?.flipv();
+        let image_panel = image::load_from_memory(include_bytes!("../../../res/panel.png"))?.flipv();
+        let texture_atlas = Atlas::new(&[
+            (BlockState::TEST , image_test ),
+            (BlockState::PANEL, image_panel)
+        ], device, &queue, None);
 
         let chunk = Chunk::new();
         let mut chunk_renderer = ChunkRenderer::new(texture_atlas);

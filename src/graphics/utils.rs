@@ -92,15 +92,15 @@ pub fn pipeline(device: &Device,
             unclipped_depth    : false,                   // Requires Features::DEPTH_CLIP_CONTROL
             conservative       : false,                   // Requires Features::CONSERVATIVE_RASTERIZATION
         },
-        depth_stencil : Some(wgpu::DepthStencilState {
-            format: DepthBuffer::DEPTH_FORMAT,
-            depth_write_enabled: true,
-            depth_compare: wgpu::CompareFunction::Less,
-            stencil: wgpu::StencilState::default(),
-            bias: wgpu::DepthBiasState::default(),
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format              : DepthBuffer::DEPTH_FORMAT,
+            depth_write_enabled : true,
+            depth_compare       : wgpu::CompareFunction::Less,
+            stencil             : wgpu::StencilState::default(),
+            bias                : wgpu::DepthBiasState::default(),
         }),
-        multiview     : None,
-        multisample   : wgpu::MultisampleState {
+        multiview   : None,
+        multisample : wgpu::MultisampleState {
             count                     : 1,
             mask                      : !0,
             alpha_to_coverage_enabled : false,
