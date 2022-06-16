@@ -13,7 +13,7 @@ Trying to make a voxel sandbox with multiplayer support and survival elements.
 Install [wasm-pack](https://rustwasm.github.io/wasm-pack/installer/) and build with: ` wasm-pack build --target web`. You can run a simple web server for testing purposes by executing: `py test-server.py`. Provided python script should start a local web server on port `8080`.
 
 ## Temporary todo list
-* Come up with a nice shader/uniform abstraction
+* Come up with a nice shader/pipeline abstraction
 * Refactor code to use a reference to `queue` instead of `Rc`
 * Think of a proc derive macro for `Bindable`
 * Introduce a concept of a resource store

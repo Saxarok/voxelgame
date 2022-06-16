@@ -1,6 +1,5 @@
-use std::{collections::HashMap, io, net::UdpSocket};
+use std::{collections::HashMap, net::UdpSocket};
 
-use log::debug;
 use uuid::Uuid as UUID;
 
 use crate::network_player::NetworkPlayer;

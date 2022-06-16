@@ -7,3 +7,4 @@ pub mod bindable;
 pub mod drawable;
 pub mod depth_buffer;
 pub mod atlas;
+pub mod uniform;

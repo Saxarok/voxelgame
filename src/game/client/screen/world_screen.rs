@@ -7,7 +7,7 @@ use crate::{
 };
 use anyhow::Result;
 use cgmath::Deg;
-use log::{info, error, debug};
+use log::{info, error};
 use rand::Rng;
 use uuid::Uuid as UUID;
 use wgpu::include_wgsl;

@@ -1,7 +1,7 @@
 mod network_player;
 mod server;
 
-use std::{net::{UdpSocket, SocketAddr}, collections::HashMap};
+use std::{net::UdpSocket, collections::HashMap};
 use anyhow::Result;
 use log::{error, debug, info};
 use network_player::NetworkPlayer;

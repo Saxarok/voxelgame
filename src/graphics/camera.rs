@@ -39,78 +39,6 @@ impl Camera {
     }
 }
 
-#[derive(Debug)]
-pub struct CameraUniform {
-    pub view_proj: Matrix4::<f32>,
-    pub buffer : wgpu::Buffer,
-    
-    bind_group        : wgpu::BindGroup,
-    bind_group_layout : wgpu::BindGroupLayout,
-}
-
-impl CameraUniform {
-    pub fn new(device: &wgpu::Device) -> Self {
-        use cgmath::SquareMatrix;
-        let view_proj = Matrix4::identity();
-
-        let buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Camera Buffer"),
-                contents: bytemuck::cast_slice(&[Into::<[[f32; 4]; 4]>::into(view_proj)]),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            }
-        );
-
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }
-            ],
-            label: Some("camera_bind_group_layout"),
-        });
-
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: buffer.as_entire_binding(),
-                }
-            ],
-            label: Some("camera_bind_group"),
-        });
-
-        return Self {
-            view_proj,
-            buffer,
-            bind_group,
-            bind_group_layout
-        };
-    }
-
-    pub fn update_view_proj(&mut self, camera: &Camera, projection: &Projection) {
-        self.view_proj = (OPENGL_TO_WGPU_MATRIX * projection.calc_matrix() * camera.calc_matrix()).into();
-    }
-}
-
-impl Bindable for CameraUniform {
-    fn bind<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>, index: u32) {
-        render_pass.set_bind_group(index, &self.bind_group, &[]);
-    }
-
-    fn layout(&self) -> &wgpu::BindGroupLayout {
-        return &self.bind_group_layout;
-    }
-}
-
 pub struct Projection {
     aspect: f32,
     fovy: Rad<f32>,
@@ -135,4 +63,8 @@ impl Projection {
     pub fn calc_matrix(&self) -> Matrix4<f32> {
         return perspective(self.fovy, self.aspect, self.znear, self.zfar);
     }
+}
+
+pub fn calc_view_proj(camera: &Camera, projection: &Projection) -> Matrix4<f32>{
+    return OPENGL_TO_WGPU_MATRIX * projection.calc_matrix() * camera.calc_matrix();
 }
