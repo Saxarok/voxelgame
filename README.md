@@ -1,5 +1,8 @@
 # unnamed voxel game
 Trying to make a voxel sandbox with multiplayer support and survival elements.
+
+![alt preview](preview.jpg)
+
 ## Build Instructions
 1. Install the Rust toolchain: https://rustup.rs
 2. Clone the repository: `git clone git@github.com:Saxarok/voxelgame.git`
@@ -15,7 +18,6 @@ Install [wasm-pack](https://rustwasm.github.io/wasm-pack/installer/) and build w
 * Think of a proc derive macro for `Bindable`
 * Introduce a concept of a resource store
 * Specify all `Bindable`s in a pipeline and automatically bind them
-* 
 
 ## Special Thanks
 * [Vilkillian](https://github.com/orgs/OpenGames/people/ZecosMAX) - helped with UV coordinates
