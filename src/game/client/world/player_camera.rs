@@ -4,9 +4,9 @@ use winit::event::{VirtualKeyCode, ElementState};
 use crate::graphics::{camera::{Camera, CameraUniform, Projection}, controller::CameraController, bindable::Bindable};
 
 pub struct PlayerCamera {
-    camera            : Camera,
-    camera_controller : CameraController,
-    camera_uniform    : CameraUniform,
+    pub camera            : Camera,
+    pub camera_controller : CameraController,
+    pub camera_uniform    : CameraUniform,
 }
 
 impl PlayerCamera {

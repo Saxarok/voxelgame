@@ -1,9 +1,10 @@
-mod state;
-mod game;
-mod graphics;
-mod screen;
+pub mod state;
+pub mod game;
+pub mod graphics;
+pub mod screen;
+pub mod utils;
 
-use game::game::Game;
+use game::client::game::Game;
 
 use winit::{
     event::*,
@@ -20,7 +21,7 @@ const HEIGHT : u32 = 800;
 // Entrypoint
 #[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
 pub async fn run() {
-    init_logger();
+    utils::init_logger();
     let event_loop = EventLoop::new();
     let window = create_window(&event_loop);
     window.set_cursor_grab(true).unwrap();
@@ -64,15 +65,6 @@ pub async fn run() {
 }
 
 // Helpers
-fn init_logger() {
-    cfg_if::cfg_if! {
-        if #[cfg(target_arch = "wasm32")] {
-            std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-            console_log::init_with_level(log::Level::Warn).expect("Couldn't initialize logger");
-        } else { env_logger::init(); }
-    }
-}
-
 fn create_window(event_loop: &EventLoop<()>) -> Window {
     let window = WindowBuilder::new()
         .with_inner_size(LogicalSize::new(WIDTH, HEIGHT))

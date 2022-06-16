@@ -1,3 +1,2 @@
-pub mod screen;
-pub mod world;
-pub mod game;
+pub mod client;
+pub mod net;
