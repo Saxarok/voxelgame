@@ -2,12 +2,12 @@ use std::{rc::Rc, net::{SocketAddr, UdpSocket}, env, mem::size_of, collections::
 
 use crate::{
     game::{client::world::{player_camera::PlayerCamera, chunk::{chunk::{Chunk, BlockState}, chunk_renderer::ChunkRenderer, chunk_mesh::block_face}, player::Player}, net::proto::{ClientPacket, ServerPacket}},
-    graphics::{bindable::Bindable, camera::Projection, depth_buffer::DepthBuffer, utils::{self, Side}, atlas::Atlas, drawable::Drawable, uniform::Uniform, mesh::Mesh },
+    graphics::{bindable::Bindable, camera::Projection, depth_buffer::DepthBuffer, utils::{self, Side}, atlas::Atlas, drawable::Drawable, uniform::Uniform, mesh::{Mesh, Vertex, InstanceRaw, InstancedMesh, Instance} },
     screen::Screen,
 };
 use anyhow::Result;
-use cgmath::{Deg, Matrix4, SquareMatrix};
-use euclid::Box2D;
+use cgmath::{Deg, Matrix4, SquareMatrix, Quaternion};
+use euclid::{Box2D, num::Zero};
 use log::{info, error};
 use rand::Rng;
 use uuid::Uuid as UUID;
@@ -24,37 +24,35 @@ pub struct WorldScreen {
     pub player_uuid    : UUID,
     pub player_token   : UUID,
     pub player_list    : HashMap<UUID, Player>,
-    pub player_mesh    : Mesh,
+    pub player_mesh    : InstancedMesh,
 
     pub pipeline       : wgpu::RenderPipeline,
+    pub device         : Rc<wgpu::Device>,
     pub queue          : Rc<wgpu::Queue>,
 
     pub projection     : Projection,
     pub camera         : PlayerCamera,
-    pub transform      : Uniform,
     pub depth_buffer   : DepthBuffer,
 }
 
 impl WorldScreen {
-    pub fn new(device: &wgpu::Device, queue: Rc<wgpu::Queue>, config: &wgpu::SurfaceConfiguration) -> Result<Self> {
+    pub fn new(device: Rc<wgpu::Device>, queue: Rc<wgpu::Queue>, config: &wgpu::SurfaceConfiguration) -> Result<Self> {
         // Camera
         let projection = Projection::new(config.width, config.height, Deg(90.0), 0.1, 100.0);
-        let camera = PlayerCamera::new(device);
-        let transform = Uniform::new(device);
-        transform.update(&queue, &Matrix4::<f32>::identity().into());
+        let camera = PlayerCamera::new(&device);
 
         // Setup player mesh
-        let player_mesh = Mesh::new(device, [
+        let mut player_mesh = InstancedMesh::new(&device, [
             block_face(Side::Top,    0, 0, 0, Box2D::new((0.0, 0.0).into(), (1.0, 1.0).into())),
             block_face(Side::Bottom, 0, 0, 0, Box2D::new((0.0, 0.0).into(), (1.0, 1.0).into())),
             block_face(Side::Right,  0, 0, 0, Box2D::new((0.0, 0.0).into(), (1.0, 1.0).into())),
             block_face(Side::Left,   0, 0, 0, Box2D::new((0.0, 0.0).into(), (1.0, 1.0).into())),
             block_face(Side::Front,  0, 0, 0, Box2D::new((0.0, 0.0).into(), (1.0, 1.0).into())),
             block_face(Side::Back,   0, 0, 0, Box2D::new((0.0, 0.0).into(), (1.0, 1.0).into())),
-        ].concat());
+        ].concat(), vec![]);
 
         // Rendering
-        let depth_buffer = DepthBuffer::new(device, config);
+        let depth_buffer = DepthBuffer::new(&device, config);
 
         // Chunks, btw it should be about time we start using resource stores...
         let image_test = image::load_from_memory(include_bytes!("../../../../res/test.png"))?.flipv();
@@ -62,18 +60,20 @@ impl WorldScreen {
         let texture_atlas = Atlas::new(&[
             (BlockState::TEST , image_test ),
             (BlockState::PANEL, image_panel)
-        ], device, &queue, None);
+        ], &device, &queue, None);
 
         let chunk = Chunk::new();
         let mut chunk_renderer = ChunkRenderer::new(texture_atlas);
-        chunk_renderer.add(device, &chunk);
+        chunk_renderer.add(&device, &chunk);
 
         // Shaders
         let shader = device.create_shader_module(&include_wgsl!("../../../../res/core.wgsl"));
         let pipeline = utils::pipeline(&device, &shader, &config, &[
-            &chunk_renderer.texture_atlas.layout(), // TODO: move pipeline into ChunkRenderer
+            &chunk_renderer.texture_atlas.layout(), // TODO: move pipeline into ChunkRenderer?
             camera.layout(),
-            transform.layout(),
+        ], &[
+            Vertex::describe(),
+            InstanceRaw::describe(),
         ]);
 
         // networking
@@ -93,7 +93,16 @@ impl WorldScreen {
 
         let mut player_list_data = [0; 16384];
         let player_list_data_read = socket.recv(&mut player_list_data).unwrap();
-        let player_list = bincode::deserialize(&player_list_data[..player_list_data_read]).unwrap();
+        let player_list: HashMap<UUID, Player> = bincode::deserialize(&player_list_data[..player_list_data_read]).unwrap();
+
+        // update player mesh instances
+        player_mesh.instances = player_list.iter().map(|player| {
+            Instance {
+                position: player.1.position,
+                rotation: Quaternion::zero(),
+            }
+        }).collect();
+        player_mesh.bake_instances(&device);
 
         // Send PlayerJoin
         let join_packet = bincode::serialize(&ClientPacket::PlayerJoin {
@@ -128,11 +137,11 @@ impl WorldScreen {
             player_mesh,
 
             pipeline,
+            device,
             queue,
 
             projection,
             camera,
-            transform,
             depth_buffer,
         });
     }
@@ -155,17 +164,9 @@ impl Screen for WorldScreen {
             utils::render(encoder, &view, Some(&self.depth_buffer.view), |mut render_pass| {
                 render_pass.set_pipeline(&self.pipeline);
                 self.camera.bind(&mut render_pass, 1);
-                self.transform.bind(&mut render_pass, 2);
 
-                let model = Matrix4::<f32>::identity();
-                self.transform.update(&queue, &model.into());
                 self.chunk_renderer.draw(&mut render_pass);
-
-                for player in &self.player_list {
-                    let model = Matrix4::<f32>::from_translation(player.1.position);
-                    self.transform.update(&queue, &model.into());
-                    self.player_mesh.draw(&mut render_pass);
-                }
+                self.player_mesh.draw(&mut render_pass);
             });
         });
     }
@@ -179,15 +180,41 @@ impl Screen for WorldScreen {
                 match packet {
                     ServerPacket::PlayerJoin { uuid, player } => {
                         self.player_list.insert(uuid, player);
+
+                        // update player mesh instances
+                        self.player_mesh.instances = self.player_list.iter().map(|player| {
+                            Instance {
+                                position: player.1.position,
+                                rotation: Quaternion::zero(),
+                            }
+                        }).collect();
+                        self.player_mesh.bake_instances(&self.device);
                     }
 
                     ServerPacket::PlayerLeave { uuid } => {
                         self.player_list.remove(&uuid);
+
+                        // update player mesh instances
+                        self.player_mesh.instances = self.player_list.iter().map(|player| {
+                            Instance {
+                                position: player.1.position,
+                                rotation: Quaternion::zero(),
+                            }
+                        }).collect();
                     }
 
                     ServerPacket::PlayerMove { uuid, position } => {
                         if let Some(player) = self.player_list.get_mut(&uuid) {
                             player.position = position;
+                            
+                            // update player mesh instances
+                            let data = self.player_list.iter().map(|player| {
+                                Instance {
+                                    position: player.1.position,
+                                    rotation: Quaternion::zero(),
+                                }.to_raw()
+                            }).collect::<Vec<_>>();
+                            self.player_mesh.update_instances(&data, &self.queue);
                         } else { error!("Invalid server packet: no player with UUID: {}", uuid); }
                     }
                 }

@@ -1,18 +1,21 @@
-use cgmath::{vec3, vec2};
-use euclid::Box2D;
+use cgmath::{vec3, vec2, Quaternion};
+use euclid::{Box2D, num::Zero};
 
-use crate::graphics::{mesh::{Vertex, Mesh}, utils::Side, drawable::Drawable, atlas::Atlas};
+use crate::graphics::{mesh::{Vertex, Mesh, InstancedMesh, Instance}, utils::Side, drawable::Drawable, atlas::Atlas};
 
 use super::chunk::{BlockState, CHUNK_SIZE};
 
 pub struct ChunkMesh {
-    mesh: Mesh
+    mesh: InstancedMesh
 }
 
 impl ChunkMesh {
     pub fn new(device: &wgpu::Device, blocks: &[BlockState], texture_atlas: &Atlas<BlockState>) -> Self {
         let vertices = mesh::culled::<CHUNK_SIZE>(blocks, texture_atlas);
-        let mesh = Mesh::new(device, vertices);
+        let mesh = InstancedMesh::new(device, vertices, vec![Instance {
+            position: (0.0, 0.0, 0.0).into(),
+            rotation: Quaternion::zero()
+        }]);
 
         return Self {
             mesh

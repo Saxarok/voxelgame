@@ -13,7 +13,7 @@ impl Game {
     pub async fn new(window: &Window) -> Result<Self> {
         let mut state = State::new(window).await?;
 
-        state.screen_stack.push(Box::new(WorldScreen::new(&state.device, state.queue.clone(), &state.config)?));
+        state.screen_stack.push(Box::new(WorldScreen::new(state.device.clone(), state.queue.clone(), &state.config)?));
 
         return Ok(Self {
             state

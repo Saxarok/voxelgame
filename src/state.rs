@@ -7,7 +7,7 @@ use crate::{screen::Screen};
 
 pub struct State {
     pub surface : wgpu::Surface,
-    pub device  : wgpu::Device,
+    pub device  : Rc<wgpu::Device>,
     pub config  : wgpu::SurfaceConfiguration,
     pub size    : winit::dpi::PhysicalSize<u32>,
     pub queue   : Rc<wgpu::Queue>, // TODO: are you sure this must be Rc?
@@ -52,7 +52,7 @@ impl State {
 
         return Ok(Self {
             surface,
-            device,
+            device: Rc::new(device),
             queue: Rc::new(queue),
             config,
             size,

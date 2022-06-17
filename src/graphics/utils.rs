@@ -50,10 +50,11 @@ pub fn submit(queue: &wgpu::Queue, device: &wgpu::Device, lambda: impl FnOnce(&m
     queue.submit(std::iter::once(encoder.finish()));
 }
 
-pub fn pipeline(device: &Device,
-                shader: &wgpu::ShaderModule,
-                config: &wgpu::SurfaceConfiguration,
-                groups: &[&wgpu::BindGroupLayout]) -> wgpu::RenderPipeline {
+pub fn pipeline(device  : &Device,
+                shader  : &wgpu::ShaderModule,
+                config  : &wgpu::SurfaceConfiguration,
+                groups  : &[&wgpu::BindGroupLayout],
+                buffers : &[wgpu::VertexBufferLayout]) -> wgpu::RenderPipeline {
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("Render Pipeline Layout"),
         push_constant_ranges : &[],
@@ -68,9 +69,7 @@ pub fn pipeline(device: &Device,
         vertex: wgpu::VertexState {
             module      : &shader,
             entry_point : "vertex_main",
-            buffers     : &[
-                Vertex::describe(),
-            ],
+            buffers     : buffers,
         },
         fragment: Some(wgpu::FragmentState {
             module      : &shader,
