@@ -29,7 +29,7 @@ pub async fn run() {
 
     let mut game = Game::new(&window).await.unwrap();
     let mut last_render_time = instant::Instant::now();
-
+    let mut focused = false;
     event_loop.run(move |event, _, control_flow| {
         match event {
             Event::MainEventsCleared => {
@@ -46,16 +46,17 @@ pub async fn run() {
             }
 
             Event::DeviceEvent { event: DeviceEvent::MouseMotion{ delta, }, .. }
-                => { game.state.mouse(delta) }
+                => { if focused { game.state.mouse(delta) } }
 
             Event::WindowEvent { event, window_id } if window_id == window.id() => {
                 match event {
+                    WindowEvent::Focused(is_focused) => { focused = is_focused; }
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                     
                     WindowEvent::Resized            ( physical_size )      => game.state.resize(physical_size),
                     WindowEvent::ScaleFactorChanged { new_inner_size, .. } => game.state.resize(*new_inner_size),
 
-                    _ => game.state.input(&event),
+                    _ => if focused { game.state.input(&event) },
                 }
             }
 

@@ -3,8 +3,14 @@ struct CameraUniform {
     view_proj: mat4x4<f32>;
 };
 
+struct ModelUniform {
+    transform: mat4x4<f32>;
+};
+
 [[group(1), binding(0)]]
 var<uniform> camera: CameraUniform;
+[[group(2), binding(0)]]
+var<uniform> model: ModelUniform;
 
 struct VertexInput {
     [[location(0)]] pos : vec3<f32>;
@@ -17,10 +23,10 @@ struct VertexOutput {
 };
 
 [[stage(vertex)]]
-fn vertex_main(model: VertexInput) -> VertexOutput {
+fn vertex_main(in: VertexInput) -> VertexOutput {
     var out: VertexOutput;
-    out.clip_pos = camera.view_proj * vec4<f32>(model.pos, 1.0);
-    out.uv       = model.uv;
+    out.clip_pos = camera.view_proj * model.transform * vec4<f32>(in.pos, 1.0);
+    out.uv       = in.uv;
 
     return out;
 }

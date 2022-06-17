@@ -31,7 +31,7 @@ impl Drawable for ChunkMesh {
     }
 }
 
-const fn block_face(side: Side, i: isize, j: isize, k: isize, uv: Box2D<f32, f32>) -> [Vertex; 6] {
+pub const fn block_face(side: Side, i: isize, j: isize, k: isize, uv: Box2D<f32, f32>) -> [Vertex; 6] {
     let (ox, oy) = (uv.min.x, uv.min.y);
     let (sx, sy) = (uv.max.x, uv.max.y);
     return match side {

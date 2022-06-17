@@ -6,7 +6,7 @@ use wgpu::util::DeviceExt;
 
 use super::bindable::Bindable;
 
-pub struct Uniform<T: Default + Clone + Pod + Zeroable> {
+pub struct Uniform<T: Default + Clone + Pod + Zeroable = [[f32; 4]; 4]> {
     buffer            : wgpu::Buffer,
     bind_group        : wgpu::BindGroup,
     bind_group_layout : wgpu::BindGroupLayout,
@@ -17,7 +17,7 @@ impl<T: Default + Clone + Pod + Zeroable> Uniform<T> {
     pub fn new(device: &wgpu::Device) -> Self {
         let buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
-                label: Some("Camera Buffer"),
+                label: None,
                 contents: bytemuck::bytes_of(&T::default()),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             }
@@ -58,7 +58,9 @@ impl<T: Default + Clone + Pod + Zeroable> Uniform<T> {
         };
     }
 
-    pub fn update(&mut self, queue: &wgpu::Queue, value: &T) {
+    /// Loads uniform with a new value.
+    /// The value is updated at the end of the RenderPass.
+    pub fn update(&self, queue: &wgpu::Queue, value: &T) {
         queue.write_buffer(&self.buffer, 0, bytemuck::bytes_of(value));
     }
 }

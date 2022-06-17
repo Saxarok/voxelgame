@@ -1,12 +1,12 @@
 use std::fmt;
 
-use cgmath::Point3;
+use cgmath::Vector3;
 use serde::{de::{self, Deserialize, Deserializer, Visitor, SeqAccess}, Serialize};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Player {
     pub name     : String,
-    pub position : Point3<f32>,
+    pub position : Vector3<f32>,
 }
 
 impl<'de> Deserialize<'de> for Player {

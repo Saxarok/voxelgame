@@ -1,12 +1,13 @@
 use std::{rc::Rc, net::{SocketAddr, UdpSocket}, env, mem::size_of, collections::HashMap};
 
 use crate::{
-    game::{client::world::{player_camera::PlayerCamera, chunk::{chunk::{Chunk, BlockState}, chunk_renderer::ChunkRenderer}, player::Player}, net::proto::{ClientPacket, ServerPacket}},
-    graphics::{bindable::Bindable, camera::Projection, depth_buffer::DepthBuffer, utils, atlas::Atlas, drawable::Drawable },
+    game::{client::world::{player_camera::PlayerCamera, chunk::{chunk::{Chunk, BlockState}, chunk_renderer::ChunkRenderer, chunk_mesh::block_face}, player::Player}, net::proto::{ClientPacket, ServerPacket}},
+    graphics::{bindable::Bindable, camera::Projection, depth_buffer::DepthBuffer, utils::{self, Side}, atlas::Atlas, drawable::Drawable, uniform::Uniform, mesh::Mesh },
     screen::Screen,
 };
 use anyhow::Result;
-use cgmath::Deg;
+use cgmath::{Deg, Matrix4, SquareMatrix};
+use euclid::Box2D;
 use log::{info, error};
 use rand::Rng;
 use uuid::Uuid as UUID;
@@ -23,12 +24,14 @@ pub struct WorldScreen {
     pub player_uuid    : UUID,
     pub player_token   : UUID,
     pub player_list    : HashMap<UUID, Player>,
+    pub player_mesh    : Mesh,
 
     pub pipeline       : wgpu::RenderPipeline,
     pub queue          : Rc<wgpu::Queue>,
 
     pub projection     : Projection,
     pub camera         : PlayerCamera,
+    pub transform      : Uniform,
     pub depth_buffer   : DepthBuffer,
 }
 
@@ -37,6 +40,18 @@ impl WorldScreen {
         // Camera
         let projection = Projection::new(config.width, config.height, Deg(90.0), 0.1, 100.0);
         let camera = PlayerCamera::new(device);
+        let transform = Uniform::new(device);
+        transform.update(&queue, &Matrix4::<f32>::identity().into());
+
+        // Setup player mesh
+        let player_mesh = Mesh::new(device, [
+            block_face(Side::Top,    0, 0, 0, Box2D::new((0.0, 0.0).into(), (1.0, 1.0).into())),
+            block_face(Side::Bottom, 0, 0, 0, Box2D::new((0.0, 0.0).into(), (1.0, 1.0).into())),
+            block_face(Side::Right,  0, 0, 0, Box2D::new((0.0, 0.0).into(), (1.0, 1.0).into())),
+            block_face(Side::Left,   0, 0, 0, Box2D::new((0.0, 0.0).into(), (1.0, 1.0).into())),
+            block_face(Side::Front,  0, 0, 0, Box2D::new((0.0, 0.0).into(), (1.0, 1.0).into())),
+            block_face(Side::Back,   0, 0, 0, Box2D::new((0.0, 0.0).into(), (1.0, 1.0).into())),
+        ].concat());
 
         // Rendering
         let depth_buffer = DepthBuffer::new(device, config);
@@ -58,6 +73,7 @@ impl WorldScreen {
         let pipeline = utils::pipeline(&device, &shader, &config, &[
             &chunk_renderer.texture_atlas.layout(), // TODO: move pipeline into ChunkRenderer
             camera.layout(),
+            transform.layout(),
         ]);
 
         // networking
@@ -109,12 +125,14 @@ impl WorldScreen {
             player_uuid,
             player_token,
             player_list,
+            player_mesh,
 
             pipeline,
             queue,
 
             projection,
             camera,
+            transform,
             depth_buffer,
         });
     }
@@ -137,7 +155,17 @@ impl Screen for WorldScreen {
             utils::render(encoder, &view, Some(&self.depth_buffer.view), |mut render_pass| {
                 render_pass.set_pipeline(&self.pipeline);
                 self.camera.bind(&mut render_pass, 1);
+                self.transform.bind(&mut render_pass, 2);
+
+                let model = Matrix4::<f32>::identity();
+                self.transform.update(&queue, &model.into());
                 self.chunk_renderer.draw(&mut render_pass);
+
+                for player in &self.player_list {
+                    let model = Matrix4::<f32>::from_translation(player.1.position);
+                    self.transform.update(&queue, &model.into());
+                    self.player_mesh.draw(&mut render_pass);
+                }
             });
         });
     }

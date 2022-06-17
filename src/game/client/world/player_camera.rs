@@ -7,7 +7,7 @@ use crate::graphics::uniform::Uniform;
 pub struct PlayerCamera {
     pub camera            : Camera,
     pub controller : CameraController,
-    pub uniform    : Uniform<[[f32; 4]; 4]>,
+    pub uniform    : Uniform,
 }
 
 impl PlayerCamera {
@@ -33,7 +33,7 @@ impl PlayerCamera {
 
     pub fn update(&mut self, projection: &Projection, queue: &wgpu::Queue, dt: instant::Duration) {
         self.controller.update_camera(&mut self.camera, dt);
-        
+
         let view_proj = calc_view_proj(&self.camera, projection);
         self.uniform.update(queue, &view_proj.into());
     }

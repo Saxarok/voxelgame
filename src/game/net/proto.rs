@@ -1,4 +1,4 @@
-use cgmath::Point3;
+use cgmath::Vector3;
 use serde::{Serialize, Deserialize};
 use uuid::Uuid as UUID;
 
@@ -17,7 +17,7 @@ pub enum ClientPacket {
     PlayerMove {
         token    : UUID,
         uuid     : UUID,
-        position : Point3<f32>,
+        position : Vector3<f32>,
     },
 }
 
@@ -32,6 +32,6 @@ pub enum ServerPacket {
     },
     PlayerMove {
         uuid     : UUID,
-        position : Point3<f32>,
+        position : Vector3<f32>,
     },
 }

@@ -1,5 +1,5 @@
 
-use cgmath::{Matrix4, Vector3, Point3, perspective, Rad, InnerSpace};
+use cgmath::{Matrix4, Vector3, perspective, Rad, InnerSpace};
 use wgpu::util::DeviceExt;
 
 use super::bindable::Bindable;
@@ -13,13 +13,13 @@ const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
 );
 
 pub struct Camera {
-    pub position : Point3<f32>,
+    pub position : Vector3<f32>,
     pub yaw      : Rad<f32>,
     pub pitch    : Rad<f32>,
 }
 
 impl Camera {
-    pub fn new<V: Into<Point3<f32>>, Y: Into<Rad<f32>>, P: Into<Rad<f32>>>(position: V, yaw: Y, pitch: P) -> Self {
+    pub fn new<V: Into<Vector3<f32>>, Y: Into<Rad<f32>>, P: Into<Rad<f32>>>(position: V, yaw: Y, pitch: P) -> Self {
         return Self {
             position: position.into(),
             yaw: yaw.into(),
@@ -31,8 +31,8 @@ impl Camera {
         let (sin_pitch, cos_pitch) = self.pitch.0.sin_cos();
         let (sin_yaw, cos_yaw) = self.yaw.0.sin_cos();
 
-        return Matrix4::look_to_rh(
-            self.position,
+        return Matrix4::look_to_rh( // This is sad.
+            (self.position.x, self.position.y, self.position.z).into(),
             Vector3::new(cos_pitch * cos_yaw, sin_pitch, cos_pitch * sin_yaw).normalize(),
             Vector3::unit_y(),
         );
