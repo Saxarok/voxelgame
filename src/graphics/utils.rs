@@ -1,6 +1,6 @@
 use wgpu::{Device, TextureView};
 
-use super::{mesh::Vertex, depth_buffer::DepthBuffer};
+use super::depth_buffer::DepthBuffer;
 
 pub fn render_pass<'a>(encoder: &'a mut wgpu::CommandEncoder, view: &'a wgpu::TextureView, depth_buffer: Option<&'a TextureView>) -> wgpu::RenderPass<'a> {
     return encoder.begin_render_pass(&wgpu::RenderPassDescriptor {

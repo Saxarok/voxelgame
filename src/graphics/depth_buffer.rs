@@ -1,3 +1,5 @@
+use euclid::Size2D;
+
 pub struct DepthBuffer {
     pub texture : wgpu::Texture,
     pub view    : wgpu::TextureView,
@@ -6,10 +8,10 @@ pub struct DepthBuffer {
 impl DepthBuffer {
     pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
-    pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> Self {
+    pub fn new(device: &wgpu::Device, size: Size2D<u32, u32>) -> Self {
         let size = wgpu::Extent3d { // 2.
-            width: config.width,
-            height: config.height,
+            width: size.width,
+            height: size.height,
             depth_or_array_layers: 1,
         };
 

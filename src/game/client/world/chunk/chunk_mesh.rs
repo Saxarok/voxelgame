@@ -1,7 +1,7 @@
 use cgmath::{vec3, vec2, Quaternion};
 use euclid::{Box2D, num::Zero};
 
-use crate::graphics::{mesh::{Vertex, Mesh, InstancedMesh, Instance}, utils::Side, drawable::Drawable, atlas::Atlas};
+use crate::graphics::{mesh::{Vertex, InstancedMesh, Instance}, utils::Side, drawable::Drawable, atlas::Atlas};
 
 use super::chunk::{BlockState, CHUNK_SIZE};
 

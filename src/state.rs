@@ -86,9 +86,9 @@ impl State {
         }
     }
 
-    pub fn update(&mut self, dt: instant::Duration) {
+    pub fn update(&mut self, now: instant::Instant) {
         for screen in &mut self.screen_stack {
-            screen.update(dt);
+            screen.update(now);
         }
     }
 

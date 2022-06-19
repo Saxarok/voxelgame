@@ -1,4 +1,4 @@
-use cgmath::{Deg, Matrix4};
+use cgmath::Deg;
 use winit::event::{VirtualKeyCode, ElementState};
 
 use crate::graphics::{camera::{Camera, Projection, calc_view_proj}, controller::CameraController, bindable::Bindable};

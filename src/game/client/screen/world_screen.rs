@@ -2,11 +2,11 @@ use std::{rc::Rc, net::{SocketAddr, UdpSocket}, env, mem::size_of, collections::
 
 use crate::{
     game::{client::world::{player_camera::PlayerCamera, chunk::{chunk::{Chunk, BlockState}, chunk_renderer::ChunkRenderer, chunk_mesh::block_face}, player::Player}, net::proto::{ClientPacket, ServerPacket}},
-    graphics::{bindable::Bindable, camera::Projection, depth_buffer::DepthBuffer, utils::{self, Side}, atlas::Atlas, drawable::Drawable, uniform::Uniform, mesh::{Mesh, Vertex, InstanceRaw, InstancedMesh, Instance} },
+    graphics::{bindable::Bindable, camera::Projection, depth_buffer::DepthBuffer, utils::{self, Side}, atlas::Atlas, drawable::Drawable, mesh::{Vertex, InstanceRaw, InstancedMesh, Instance} },
     screen::Screen,
 };
 use anyhow::Result;
-use cgmath::{Deg, Matrix4, SquareMatrix, Quaternion};
+use cgmath::{Deg, Quaternion, vec3};
 use euclid::{Box2D, num::Zero};
 use log::{info, error};
 use rand::Rng;
@@ -15,6 +15,8 @@ use wgpu::include_wgsl;
 use winit::event::{KeyboardInput, WindowEvent};
 
 pub struct WorldScreen {
+    pub last_render    : instant::Instant,
+    pub last_packet    : instant::Instant,
     pub chunk_renderer : ChunkRenderer,
     pub chunk          : Chunk,
     
@@ -52,7 +54,7 @@ impl WorldScreen {
         ].concat(), vec![]);
 
         // Rendering
-        let depth_buffer = DepthBuffer::new(&device, config);
+        let depth_buffer = DepthBuffer::new(&device, (config.width, config.height).into());
 
         // Chunks, btw it should be about time we start using resource stores...
         let image_test = image::load_from_memory(include_bytes!("../../../../res/test.png"))?.flipv();
@@ -98,7 +100,7 @@ impl WorldScreen {
         // update player mesh instances
         player_mesh.instances = player_list.iter().map(|player| {
             Instance {
-                position: player.1.position,
+                position: player.1.position + vec3(-0.5, -0.5, -0.5),
                 rotation: Quaternion::zero(),
             }
         }).collect();
@@ -125,6 +127,8 @@ impl WorldScreen {
         socket.set_nonblocking(true).unwrap();
         
         return Ok(Self {
+            last_render: instant::Instant::now(),
+            last_packet: instant::Instant::now(),
             chunk_renderer,
             chunk,
 
@@ -171,7 +175,20 @@ impl Screen for WorldScreen {
         });
     }
 
-    fn update(&mut self, dt: instant::Duration) {
+    fn update(&mut self, now: instant::Instant) {
+        if now.duration_since(self.last_packet).as_millis() > 20 {
+            self.last_packet = now;
+            let bytes = bincode::serialize(&ClientPacket::PlayerMove {
+                token    : self.player_token,
+                uuid     : self.player_uuid,
+                position : self.camera.camera.position,
+            }).unwrap();
+            
+            self.socket.send(&bytes).unwrap();
+        }
+
+        let dt  = now - self.last_render;
+        self.last_render = now;
         self.camera.update(&self.projection, &self.queue, dt);
         
         let mut buffer = [0; 16384];
@@ -184,7 +201,7 @@ impl Screen for WorldScreen {
                         // update player mesh instances
                         self.player_mesh.instances = self.player_list.iter().map(|player| {
                             Instance {
-                                position: player.1.position,
+                                position: player.1.position + vec3(-0.5, -0.5, -0.5),
                                 rotation: Quaternion::zero(),
                             }
                         }).collect();
@@ -197,7 +214,7 @@ impl Screen for WorldScreen {
                         // update player mesh instances
                         self.player_mesh.instances = self.player_list.iter().map(|player| {
                             Instance {
-                                position: player.1.position,
+                                position: player.1.position + vec3(-0.5, -0.5, -0.5),
                                 rotation: Quaternion::zero(),
                             }
                         }).collect();
@@ -210,7 +227,7 @@ impl Screen for WorldScreen {
                             // update player mesh instances
                             let data = self.player_list.iter().map(|player| {
                                 Instance {
-                                    position: player.1.position,
+                                    position: player.1.position + vec3(-0.5, -0.5, -0.5),
                                     rotation: Quaternion::zero(),
                                 }.to_raw()
                             }).collect::<Vec<_>>();
@@ -234,18 +251,10 @@ impl Screen for WorldScreen {
 
             _ => {}
         }
-
-        let bytes = bincode::serialize(&ClientPacket::PlayerMove {
-            token    : self.player_token,
-            uuid     : self.player_uuid,
-            position : self.camera.camera.position,
-        }).unwrap();
-        
-        self.socket.send(&bytes).unwrap();
     }
 
     fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         self.projection.resize(new_size.width, new_size.height);
-        // TODO: Resize depth buffer here
+        self.depth_buffer = DepthBuffer::new(&self.device, (new_size.width, new_size.height).into());
     }
 }

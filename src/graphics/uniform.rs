@@ -1,7 +1,6 @@
 use std::marker::PhantomData;
 
 use bytemuck::{Pod, Zeroable};
-use cgmath::{Matrix4, SquareMatrix};
 use wgpu::util::DeviceExt;
 
 use super::bindable::Bindable;

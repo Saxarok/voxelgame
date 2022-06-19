@@ -1,8 +1,5 @@
 
 use cgmath::{Matrix4, Vector3, perspective, Rad, InnerSpace};
-use wgpu::util::DeviceExt;
-
-use super::bindable::Bindable;
 
 #[rustfmt::skip]
 const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
