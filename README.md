@@ -1,7 +1,7 @@
 # unnamed voxel game
 Trying to make a voxel sandbox with multiplayer support and survival elements.
 
-![alt preview](preview.jpg)
+https://user-images.githubusercontent.com/33405371/174464890-534bd9c2-fd4c-4fb0-96bf-c634024c4b70.mp4
 
 ## Build Instructions
 1. Install the Rust toolchain: https://rustup.rs
@@ -10,6 +10,7 @@ Trying to make a voxel sandbox with multiplayer support and survival elements.
 4. Compile the program: `cargo build --release`
 
 ### WASM support
+
 Install [wasm-pack](https://rustwasm.github.io/wasm-pack/installer/) and build with: ` wasm-pack build --target web`. You can run a simple web server for testing purposes by executing: `py test-server.py`. Provided python script should start a local web server on port `8080`.
 
 ## Running
