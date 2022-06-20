@@ -25,7 +25,6 @@ pub async fn run() {
     let event_loop = EventLoop::new();
     let window = create_window(&event_loop);
     window.set_cursor_grab(true).unwrap();
-    window.set_cursor_visible(false);
 
     let mut game = Game::new(&window).await.unwrap();
     let mut focused = false;
@@ -41,7 +40,7 @@ pub async fn run() {
                 game.state.render();
             }
 
-            Event::DeviceEvent { event: DeviceEvent::MouseMotion{ delta, }, .. }
+            Event::DeviceEvent { event: DeviceEvent::MouseMotion { delta, }, .. }
                 => { if focused { game.state.mouse(delta) } }
 
             Event::WindowEvent { event, window_id } if window_id == window.id() => {

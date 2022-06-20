@@ -38,7 +38,7 @@ pub fn render<'a>(encoder        : &'a mut wgpu::CommandEncoder,
                     view         : &'a wgpu::TextureView,
                     depth_buffer : Option<&'a TextureView>,
                     lambda       : impl FnOnce(wgpu::RenderPass<'a>,) -> ()) {
-    let pass = render_pass(encoder, view, depth_buffer);
+    let mut pass = render_pass(encoder, view, depth_buffer);
     lambda(pass);
 }
 

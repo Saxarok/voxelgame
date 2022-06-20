@@ -2,7 +2,7 @@ use std::{rc::Rc, net::{SocketAddr, UdpSocket}, env, mem::size_of, collections::
 
 use crate::{
     game::{client::world::{player_camera::PlayerCamera, chunk::{chunk::{Chunk, BlockState}, chunk_renderer::ChunkRenderer, chunk_mesh::block_face}, player::Player}, net::proto::{ClientPacket, ServerPacket}},
-    graphics::{bindable::Bindable, camera::Projection, depth_buffer::DepthBuffer, utils::{self, Side}, atlas::Atlas, drawable::Drawable, mesh::{Vertex, InstanceRaw, InstancedMesh, Instance} },
+    graphics::{bindable::Bindable, camera::Projection, depth_buffer::DepthBuffer, utils::{self, Side}, atlas::Atlas, drawable::Drawable, mesh::{Vertex, InstanceRaw, InstancedMesh, Instance}, texture::Texture },
     screen::Screen,
 };
 use anyhow::Result;
@@ -27,6 +27,7 @@ pub struct WorldScreen {
     pub player_token   : UUID,
     pub player_list    : HashMap<UUID, Player>,
     pub player_mesh    : InstancedMesh,
+    pub player_texture : Texture,
 
     pub pipeline       : wgpu::RenderPipeline,
     pub device         : Rc<wgpu::Device>,
@@ -52,6 +53,8 @@ impl WorldScreen {
             block_face(Side::Front,  0, 0, 0, Box2D::new((0.0, 0.0).into(), (1.0, 1.0).into())),
             block_face(Side::Back,   0, 0, 0, Box2D::new((0.0, 0.0).into(), (1.0, 1.0).into())),
         ].concat(), vec![]);
+
+        let player_texture = Texture::from_bytes(&device, &queue, include_bytes!("../../../../res/player.png"), wgpu::FilterMode::Nearest, "player")?;
 
         // Rendering
         let depth_buffer = DepthBuffer::new(&device, (config.width, config.height).into());
@@ -139,6 +142,7 @@ impl WorldScreen {
             player_token,
             player_list,
             player_mesh,
+            player_texture,
 
             pipeline,
             device,
@@ -163,13 +167,15 @@ impl Drop for WorldScreen {
 }
 
 impl Screen for WorldScreen {
-    fn render(&self, view: &wgpu::TextureView, queue: &wgpu::Queue, device: &wgpu::Device) {
+    fn render(&mut self, view: &wgpu::TextureView, queue: &wgpu::Queue, device: &wgpu::Device) {
         utils::submit(&queue, device, |encoder| {
             utils::render(encoder, &view, Some(&self.depth_buffer.view), |mut render_pass| {
                 render_pass.set_pipeline(&self.pipeline);
                 self.camera.bind(&mut render_pass, 1);
 
                 self.chunk_renderer.draw(&mut render_pass);
+
+                self.player_texture.bind(&mut render_pass, 0);
                 self.player_mesh.draw(&mut render_pass);
             });
         });

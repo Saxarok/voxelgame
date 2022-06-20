@@ -31,6 +31,10 @@ rectangle-pack = "0.4.2"
 serde = "1.0.137"
 bincode = "1.3.3"
 rand = "0.8.5"
+egui = "0.18.1"
+egui-wgpu = "0.18.0"
+epi = "0.17.0"
+egui_demo_lib = "0.18.0"
 
 [dependencies.getrandom]
 version = "0.2.7"

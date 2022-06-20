@@ -96,7 +96,7 @@ impl State {
         let output = self.surface.get_current_texture().unwrap();
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        for screen in &self.screen_stack {
+        for screen in &mut self.screen_stack {
             screen.render(&view, &self.queue, &self.device);
         }
     
