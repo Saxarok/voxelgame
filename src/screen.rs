@@ -7,4 +7,6 @@ pub trait Screen {
     fn mouse(&mut self, delta: (f64, f64)) { }
     fn input(&mut self, event: &WindowEvent) { }
     fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) { }
+
+    fn is_hidden(&mut self) -> bool { false }
 }

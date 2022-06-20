@@ -76,19 +76,25 @@ impl State {
 
     pub fn mouse(&mut self, delta: (f64, f64)) {
         for screen in &mut self.screen_stack {
-            screen.mouse(delta);
+            if !screen.is_hidden() {
+                screen.mouse(delta);
+            }
         }
     }
     
     pub fn input(&mut self, event: &WindowEvent) {
         for screen in &mut self.screen_stack {
-            screen.input(event);
+            if !screen.is_hidden() {
+                screen.input(event);
+            }
         }
     }
 
     pub fn update(&mut self, now: instant::Instant) {
         for screen in &mut self.screen_stack {
-            screen.update(now);
+            if !screen.is_hidden() {
+                screen.update(now);
+            }
         }
     }
 
@@ -97,7 +103,9 @@ impl State {
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
 
         for screen in &mut self.screen_stack {
-            screen.render(&view, &self.queue, &self.device);
+            if !screen.is_hidden() {
+                screen.render(&view, &self.queue, &self.device);
+            }
         }
     
         output.present();

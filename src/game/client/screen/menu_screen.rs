@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, cell::Cell};
 
 use anyhow::Result;
 use egui::{RawInput, TexturesDelta};
@@ -7,6 +7,8 @@ use winit::event::{WindowEvent, ElementState, VirtualKeyCode, ModifiersState, Mo
 use crate::{screen::Screen, graphics::utils};
 
 pub struct MenuScreen {
+    pub show_menu   : Rc<Cell<bool>>,
+
     pub pps         : f32,
     pub pointer     : (f32, f32),
     pub modfiers    : ModifiersState,
@@ -24,13 +26,11 @@ fn is_cut_command(modifiers: egui::Modifiers, keycode: winit::event::VirtualKeyC
         || (cfg!(target_os = "windows")
         && modifiers.shift
         && keycode == winit::event::VirtualKeyCode::Delete); }
-
 fn is_copy_command(modifiers: egui::Modifiers, keycode: winit::event::VirtualKeyCode) -> bool {
     return (modifiers.command && keycode == winit::event::VirtualKeyCode::C)
         || (cfg!(target_os = "windows")
         && modifiers.ctrl
         && keycode == winit::event::VirtualKeyCode::Insert); }
-
 fn is_paste_command(modifiers: egui::Modifiers, keycode: winit::event::VirtualKeyCode) -> bool {
     return (modifiers.command && keycode == winit::event::VirtualKeyCode::V)
         || (cfg!(target_os = "windows")
@@ -38,12 +38,14 @@ fn is_paste_command(modifiers: egui::Modifiers, keycode: winit::event::VirtualKe
         && keycode == winit::event::VirtualKeyCode::Insert); }
 
 impl MenuScreen {
-    pub fn new(device: Rc<wgpu::Device>, surface_format: &wgpu::SurfaceConfiguration) -> Result<Self> {
+    pub fn new(device: Rc<wgpu::Device>, surface_format: &wgpu::SurfaceConfiguration, show_menu: Rc<Cell<bool>>) -> Result<Self> {
         let egui_rpass = RenderPass::new(&device, wgpu::TextureFormat::Bgra8UnormSrgb, 1);
         let demo_app = egui_demo_lib::DemoWindows::default();
         let egui_ctx = egui::Context::default();
 
         return Ok(Self {
+            show_menu,
+
             pps: 1.0,
             pointer: (0.0, 0.0),
             modfiers: ModifiersState::default(),
@@ -171,7 +173,6 @@ fn translate_keycode(key: VirtualKeyCode) -> Option<egui::Key> {
         _ => { return None; }
     })
 }
-
 fn translate_modifiers(modifiers: ModifiersState) -> egui::Modifiers {
     return egui::Modifiers {
         alt     : modifiers.alt(),
@@ -181,7 +182,6 @@ fn translate_modifiers(modifiers: ModifiersState) -> egui::Modifiers {
         command : if cfg!(target_os = "macos") { modifiers.logo() } else { modifiers.ctrl() }
     };
 }
-
 fn translate_mouse_button(button: MouseButton) -> Option<egui::PointerButton> {
     match button {
         winit::event::MouseButton::Left => Some(egui::PointerButton::Primary),
@@ -192,14 +192,17 @@ fn translate_mouse_button(button: MouseButton) -> Option<egui::PointerButton> {
 }
 
 fn is_printable_char(chr: char) -> bool {
-    let is_in_private_use_area = '\u{e000}' <= chr && chr <= '\u{f8ff}'
-        || '\u{f0000}' <= chr && chr <= '\u{ffffd}'
+    let is_in_private_use_area =
+           '\u{e000}'   <= chr && chr <= '\u{f8ff}'
+        || '\u{f0000}'  <= chr && chr <= '\u{ffffd}'
         || '\u{100000}' <= chr && chr <= '\u{10fffd}';
 
-    !is_in_private_use_area && !chr.is_ascii_control()
+    return !is_in_private_use_area && !chr.is_ascii_control();
 }
 
 impl Screen for MenuScreen {
+    fn is_hidden(&mut self) -> bool { !self.show_menu.get() }
+
     fn render(&mut self, view: &wgpu::TextureView, queue: &wgpu::Queue, device: &wgpu::Device) {
         let output = self.egui_ctx.run(self.egui_input.clone(), |ctx| {
             self.demo_app.ui(ctx);
@@ -228,7 +231,6 @@ impl Screen for MenuScreen {
     fn input(&mut self, event: &WindowEvent) {
         match event {
             WindowEvent::KeyboardInput { input, .. } => { self.on_key_input(input); }
-
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => { self.egui_input.pixels_per_point = Some(*scale_factor as f32); }
             WindowEvent::ModifiersChanged(state) => { self.modfiers = state.clone(); }
             WindowEvent::MouseWheel { delta, .. } => { self.on_mouse_wheel(*delta); }
@@ -237,13 +239,11 @@ impl Screen for MenuScreen {
                 let is_mac_cmd = cfg!(target_os = "macos") && (self.egui_input.modifiers.ctrl || self.egui_input.modifiers.mac_cmd);
                 if is_printable_char(*ch) && !is_mac_cmd { self.egui_input.events.push(egui::Event::Text(ch.to_string())); }
             }
-
             WindowEvent::CursorMoved { position, .. } => {
                 let pos = (position.x as f32, position.y as f32);
                 self.egui_input.events.push(egui::Event::PointerMoved(pos.into())); 
                 self.pointer = pos;
             }
-
             WindowEvent::MouseInput { state, button, .. } => {
                 if let Some(button) = translate_mouse_button(*button) {
                     let pressed = *state == ElementState::Pressed;
@@ -263,7 +263,7 @@ impl Screen for MenuScreen {
     fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         self.screen_desc = ScreenDescriptor {
             size_in_pixels   : [new_size.width, new_size.height],
-            pixels_per_point : 1.0
+            pixels_per_point : self.pps
         };
     }
 }

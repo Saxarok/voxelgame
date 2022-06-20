@@ -1,4 +1,4 @@
-use std::{rc::Rc, net::{SocketAddr, UdpSocket}, env, mem::size_of, collections::HashMap};
+use std::{rc::Rc, net::{SocketAddr, UdpSocket}, env, mem::size_of, collections::HashMap, cell::Cell};
 
 use crate::{
     game::{client::world::{player_camera::PlayerCamera, chunk::{chunk::{Chunk, BlockState}, chunk_renderer::ChunkRenderer, chunk_mesh::block_face}, player::Player}, net::proto::{ClientPacket, ServerPacket}},
@@ -12,9 +12,11 @@ use log::{info, error};
 use rand::Rng;
 use uuid::Uuid as UUID;
 use wgpu::include_wgsl;
-use winit::event::{KeyboardInput, WindowEvent};
+use winit::event::{KeyboardInput, WindowEvent, VirtualKeyCode, ElementState};
 
 pub struct WorldScreen {
+    pub show_menu      : Rc<Cell<bool>>,
+
     pub last_render    : instant::Instant,
     pub last_packet    : instant::Instant,
     pub chunk_renderer : ChunkRenderer,
@@ -39,7 +41,7 @@ pub struct WorldScreen {
 }
 
 impl WorldScreen {
-    pub fn new(device: Rc<wgpu::Device>, queue: Rc<wgpu::Queue>, config: &wgpu::SurfaceConfiguration) -> Result<Self> {
+    pub fn new(device: Rc<wgpu::Device>, queue: Rc<wgpu::Queue>, config: &wgpu::SurfaceConfiguration, show_menu: Rc<Cell<bool>>) -> Result<Self> {
         // Camera
         let projection = Projection::new(config.width, config.height, Deg(90.0), 0.1, 100.0);
         let camera = PlayerCamera::new(&device);
@@ -130,6 +132,8 @@ impl WorldScreen {
         socket.set_nonblocking(true).unwrap();
         
         return Ok(Self {
+            show_menu,
+
             last_render: instant::Instant::now(),
             last_packet: instant::Instant::now(),
             chunk_renderer,
@@ -252,8 +256,17 @@ impl Screen for WorldScreen {
 
     fn input(&mut self, event: &WindowEvent) {
         match event {
-            WindowEvent::KeyboardInput { input: KeyboardInput { virtual_keycode: Some(key), state, .. }, .. }
-                => { self.camera.on_keyboard(*key, *state); }
+            WindowEvent::KeyboardInput { input: KeyboardInput { virtual_keycode: Some(key), state, .. }, .. } => {
+                match key {
+                    VirtualKeyCode::Escape => {
+                        if *state == ElementState::Pressed {
+                            self.show_menu.set(!self.show_menu.get());
+                        }
+                    }
+
+                    _ => { self.camera.on_keyboard(*key, *state); }
+                }
+            }
 
             _ => {}
         }

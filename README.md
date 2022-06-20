@@ -24,6 +24,9 @@ Currently, the client automatically tries to connect on `127.0.0.1:16000` with a
 * Specify all `Bindable`s in a pipeline and automatically bind them
 * Multithreading and async support
 * Implement packet buffering
+* Come up with ways of interaction between screens
+* Consider an event bus for screens
+* Figure out input event propogation
 
 ## Special Thanks
 * [Vilkillian](https://github.com/orgs/OpenGames/people/ZecosMAX) - helped with UV coordinates
