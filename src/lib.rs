@@ -3,6 +3,7 @@ pub mod game;
 pub mod graphics;
 pub mod screen;
 pub mod utils;
+pub mod egui;
 
 use game::client::game::Game;
 
@@ -36,22 +37,22 @@ pub async fn run() {
 
             Event::RedrawRequested(window_id) if window_id == window.id() => {
                 let now = instant::Instant::now();
-                game.state.update(now);
-                game.state.render();
+                game.update(now);
+                game.render();
             }
 
             Event::DeviceEvent { event: DeviceEvent::MouseMotion { delta, }, .. }
-                => { if focused { game.state.mouse(delta) } }
+                => { if focused { game.mouse(delta) } }
 
             Event::WindowEvent { event, window_id } if window_id == window.id() => {
                 match event {
                     WindowEvent::Focused(is_focused) => { focused = is_focused; }
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                     
-                    WindowEvent::Resized            ( physical_size )      => game.state.resize(physical_size),
-                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => game.state.resize(*new_inner_size),
+                    WindowEvent::Resized            ( physical_size )      => game.resize(physical_size),
+                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => game.resize(*new_inner_size),
 
-                    _ => if focused { game.state.input(&event) },
+                    _ => if focused { game.input(&event) },
                 }
             }
 

@@ -75,17 +75,17 @@ impl State {
     }
 
     pub fn mouse(&mut self, delta: (f64, f64)) {
-        for screen in &mut self.screen_stack {
+        for screen in self.screen_stack.iter_mut().rev() {
             if !screen.is_hidden() {
-                screen.mouse(delta);
+                if !screen.mouse(delta) { break; }
             }
         }
     }
     
     pub fn input(&mut self, event: &WindowEvent) {
-        for screen in &mut self.screen_stack {
+        for screen in self.screen_stack.iter_mut().rev() {
             if !screen.is_hidden() {
-                screen.input(event);
+                if !screen.input(event) { break; }
             }
         }
     }
